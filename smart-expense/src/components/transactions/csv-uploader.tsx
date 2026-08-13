@@ -14,39 +14,73 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { parseCsv, type ParsedRow } from '@/lib/csv';
 import { importTransactions } from '@/actions/transactions';
+import { parsePdfAction } from '@/actions/pdf';
 import { cn, formatCurrency } from '@/lib/utils';
+
+type FileKind = 'csv' | 'excel' | 'pdf';
+
+function detectKind(name: string): FileKind | null {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.csv')) return 'csv';
+  if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return 'excel';
+  if (lower.endsWith('.pdf')) return 'pdf';
+  return null;
+}
 
 export function CsvUploader() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<ParsedRow[] | null>(null);
   const [fileName, setFileName] = useState<string>('');
+  const [fileKind, setFileKind] = useState<FileKind | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  function handleFile(file: File) {
-    if (!file.name.match(/\.csv$/i)) {
-      toast.error('Please select a .csv file');
+  async function handleFile(file: File) {
+    const kind = detectKind(file.name);
+    if (!kind) {
+      toast.error('Please select a .csv, .xlsx, .xls, or .pdf file');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      const parsed = parseCsv(text);
-      setRows(parsed.rows);
+
+    setParsing(true);
+    try {
+      if (kind === 'csv') {
+        const text = await file.text();
+        const parsed = parseCsv(text);
+        setRows(parsed.rows);
+      } else if (kind === 'excel') {
+        // Dynamic import so the xlsx bundle only loads when needed
+        const { parseExcel } = await import('@/lib/parsers/excel');
+        const buffer = await file.arrayBuffer();
+        const parsed = parseExcel(buffer);
+        setRows(parsed.rows);
+      } else {
+        // PDF → server action (unpdf runs on Node, keeps client bundle small)
+        const fd = new FormData();
+        fd.append('file', file);
+        const parsed = await parsePdfAction(fd);
+        if (parsed.errors.length > 0) {
+          toast.error(parsed.errors[0]);
+        }
+        setRows(parsed.rows);
+      }
       setFileName(file.name);
-      const invalid = parsed.rows.filter((r) => r.warnings.length > 0).length;
-      toast.success(
-        `Parsed ${parsed.rows.length} rows${invalid ? ` (${invalid} with warnings)` : ''}`,
-      );
-    };
-    reader.readAsText(file);
+      setFileKind(kind);
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not read that file');
+      setRows(null);
+    } finally {
+      setParsing(false);
+    }
   }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
     const f = e.dataTransfer.files?.[0];
-    if (f) handleFile(f);
+    if (f) void handleFile(f);
   }
 
   async function onImport() {
@@ -72,13 +106,30 @@ export function CsvUploader() {
         toast.success(
           `Imported ${res.inserted}. ${res.categorizedByRule} rule + ${res.categorizedByAI} AI · ${res.skippedDuplicates} dup skipped.`,
         );
-        setRows(null);
-        setFileName('');
-        if (inputRef.current) inputRef.current.value = '';
-      } catch (err) {
+        reset();
+      } catch {
         toast.error('Import failed. Try again.');
       }
     });
+  }
+
+  function reset() {
+    setRows(null);
+    setFileName('');
+    setFileKind(null);
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  if (parsing && !rows) {
+    return (
+      <div className="mt-4 grid place-items-center rounded-xl border-2 border-dashed border-accent/50 bg-secondary/30 p-10 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <p className="mt-3 text-sm font-medium">Reading your file…</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          PDF extraction takes a few seconds
+        </p>
+      </div>
+    );
   }
 
   if (!rows) {
@@ -102,26 +153,26 @@ export function CsvUploader() {
             <Upload className="h-6 w-6" />
           </div>
           <div>
-            <p className="font-medium">Drop your CSV here</p>
+            <p className="font-medium">Drop your statement here</p>
             <p className="text-sm text-muted-foreground mt-0.5">
-              or click to browse · headers we understand: date, description,
-              amount, debit/credit, type
+              or click to browse — accepts <b>CSV</b>, <b>Excel</b> (.xlsx / .xls) and <b>PDF</b>
             </p>
           </div>
           <input
             ref={inputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.pdf,application/pdf"
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+            onChange={(e) => e.target.files?.[0] && void handleFile(e.target.files[0])}
           />
         </label>
 
         <div className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
           <FileSpreadsheet className="h-4 w-4 shrink-0 mt-0.5" />
           <p>
-            Handles messy data: multiple date formats, negative amounts, missing
-            fields — you'll get a preview before anything is saved.
+            Handles messy data across formats: multiple date formats, negative amounts,
+            missing fields. PDFs are best-effort — scanned/image PDFs won&apos;t work.
+            You&apos;ll always see a preview before anything is saved.
           </p>
         </div>
       </div>
@@ -130,26 +181,24 @@ export function CsvUploader() {
 
   const importable = rows.filter((r) => r.date && r.amount && r.description);
   const warned = rows.filter((r) => r.warnings.length > 0);
+  const kindLabel = fileKind === 'excel' ? 'Excel' : fileKind === 'pdf' ? 'PDF' : 'CSV';
 
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium">{fileName}</p>
+          <p className="text-sm font-medium flex items-center gap-2">
+            {fileName}
+            <Badge variant="outline" className="text-[10px]">
+              {kindLabel}
+            </Badge>
+          </p>
           <p className="text-xs text-muted-foreground">
             {importable.length} importable · {warned.length} with warnings
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setRows(null);
-              setFileName('');
-              if (inputRef.current) inputRef.current.value = '';
-            }}
-          >
+          <Button variant="ghost" size="sm" onClick={reset}>
             Cancel
           </Button>
           <Button size="sm" onClick={onImport} disabled={pending || importable.length === 0}>
