@@ -474,6 +474,8 @@ Built as a hackathon project with the goal of making personal finance easier, sm
 https://hackinmotion-ricr-him-1016.onrender.com/
 
 Try Wealth Sight live without running the project locally.
+
+
 **Repository:**
 https://github.com/mayankatulkar26/HackInMotion-RICR-HIM-1016
 
