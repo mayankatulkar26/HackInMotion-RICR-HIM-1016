@@ -22,16 +22,42 @@ import { deleteTransaction } from '@/actions/transactions';
 export function TransactionTable({ rows }: { rows: Transaction[] }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('All');
+  const [month, setMonth] = useState('All');
+  const [year, setYear] = useState('All');
   const [pending, startTransition] = useTransition();
+
+  const yearOptions = useMemo(() => {
+    const years = [...new Set(rows.map((r) => new Date(r.date).getFullYear()))].sort((a, b) => b - a);
+    return years.map((value) => ({ value: String(value), label: String(value) }));
+  }, [rows]);
+
+  const monthOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    rows.forEach((r) => {
+      const d = new Date(r.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = format(d, 'MMM yyyy');
+      if (!map.has(key)) map.set(key, label);
+    });
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([value, label]) => ({ value, label }));
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const query = q.toLowerCase().trim();
     return rows.filter((r) => {
       if (cat !== 'All' && r.category !== cat) return false;
       if (query && !r.description.toLowerCase().includes(query)) return false;
+
+      const d = new Date(r.date);
+      const rowYear = String(d.getFullYear());
+      const rowMonth = `${rowYear}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+      if (year !== 'All' && rowYear !== year) return false;
+      if (month !== 'All' && rowMonth !== month) return false;
+
       return true;
     });
-  }, [rows, q, cat]);
+  }, [rows, q, cat, month, year]);
 
   function onDelete(id: string) {
     startTransition(async () => {
@@ -65,7 +91,7 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
           />
         </div>
         <Select value={cat} onValueChange={setCat}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[170px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -73,6 +99,32 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
             {CATEGORIES.map((c) => (
               <SelectItem key={c} value={c}>
                 {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={year} onValueChange={setYear}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All years</SelectItem>
+            {yearOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={month} onValueChange={setMonth}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All months</SelectItem>
+            {monthOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
               </SelectItem>
             ))}
           </SelectContent>

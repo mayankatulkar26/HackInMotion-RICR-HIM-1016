@@ -34,7 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             richColors
             theme="dark"
             position="top-right"
-            toastOptions={{ className: 'font-sans' }}
+            toastOptions={{
+              className: 'font-sans',
+              duration: 2500,
+            }}
           />
         </ThemeProvider>
       </body>

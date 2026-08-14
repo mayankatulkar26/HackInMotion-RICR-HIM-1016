@@ -1,2 +1,2 @@
 # HackInMotion-RICR-HIM-1016
-Smart Expense Analyzer &amp; Financial Health Dashboard
+Wealth Sight Analyzer &amp; Financial Health Dashboard
