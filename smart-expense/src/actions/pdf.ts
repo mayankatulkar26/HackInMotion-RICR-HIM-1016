@@ -13,33 +13,28 @@ import { normalizeRecords, type ParseResult } from '@/lib/csv';
  *   - Mon D, YYYY               → "Aug 13, 2026"
  *   - D Mon YYYY                → "13 Aug 2026"
  *   - D-Mon-YYYY                → "13-Aug-2026"
- *
- * `MONTH_NAMES` covers Jan-Dec / January-December (case-insensitive).
  */
 const MONTH_NAMES =
   '(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)';
 
 const DATE_RE = new RegExp(
   [
-    // 13/08/2026 or 13-08-2026
     String.raw`\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b`,
-    // 2026-08-13
     String.raw`\b\d{4}-\d{1,2}-\d{1,2}\b`,
-    // Aug 13, 2026 / August 13, 2026
     String.raw`\b${MONTH_NAMES}\s+\d{1,2},?\s+\d{4}\b`,
-    // 13 Aug 2026 / 13-Aug-2026
     String.raw`\b\d{1,2}[\s\-]+${MONTH_NAMES}[\s\-]+\d{4}\b`,
   ].join('|'),
   'gi',
 );
 
-// Amount pattern: 1,234.56 / 1234 / ₹1,234 — with optional CR/DR suffix
-const AMOUNT_RE = /(?:₹\s*)?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/g;
+const AMOUNT_TOKEN = /(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/;
+const AMOUNT_RE = new RegExp(AMOUNT_TOKEN.source, 'g');
+const RUPEE_AMOUNT_RE = new RegExp(`₹\\s*${AMOUNT_TOKEN.source}`, 'g');
 
 const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 10_000_000;
 
-// Ignore lines that are clearly noise (headers, footers, page numbers, addresses)
+// Lines that are clearly noise (headers, footers, page numbers, addresses)
 const NOISE_RE =
   /^(page \d|statement|account number|balance|opening bal|closing bal|total|©|www\.|https?:|confidential|disclaimer|terms|address|branch|ifsc|swift)/i;
 
@@ -85,7 +80,6 @@ export async function parsePdfAction(formData: FormData): Promise<ParseResult> {
   const records = extractTransactionsFromText(rawText);
 
   if (records.length === 0) {
-    // Return the first slice of extracted text so we can see what unpdf produced.
     const preview = rawText.slice(0, 400).replace(/\s+/g, ' ').trim();
     return {
       rows: [],
@@ -102,18 +96,26 @@ export async function parsePdfAction(formData: FormData): Promise<ParseResult> {
   return { rows, headers, errors: [] };
 }
 
+function inRange(v: number): boolean {
+  return !isNaN(v) && v >= MIN_AMOUNT && v <= MAX_AMOUNT;
+}
+
 /**
  * Split the extracted text into transaction blocks by date, then pull the
- * description + amount from each block. Blocks may span multiple lines
- * (a common shape when bank statements render one field per row of the table).
+ * description + amount from each block.
+ *
+ * Amount picking priority (this is where PhonePe used to break):
+ *   1. `₹<number>` — the unambiguous rupee marker wins over everything else
+ *   2. Number immediately after DEBIT / CREDIT (typical bank layout)
+ *   3. Largest plausible non-noise number in the block
+ *
+ * Before running any of that, we scrub the block of clock times, transaction
+ * IDs, UTRs, phone numbers, and masked account tails — otherwise `01:37 pm`
+ * leaks `37` as a candidate and it wins by proximity.
  */
 function extractTransactionsFromText(text: string): Record<string, string>[] {
-  // Normalize whitespace but keep line breaks (blocks are separated by dates,
-  // not by explicit blank lines).
   const cleaned = text.replace(/[ \t]+/g, ' ');
 
-  // Find every date position. Each block runs from one date to just before
-  // the next date.
   const matches: { idx: number; date: string }[] = [];
   DATE_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
@@ -123,59 +125,93 @@ function extractTransactionsFromText(text: string): Record<string, string>[] {
   if (matches.length === 0) return [];
 
   const records: Record<string, string>[] = [];
+
   for (let i = 0; i < matches.length; i++) {
     const start = matches[i].idx + matches[i].date.length;
     const end = i + 1 < matches.length ? matches[i + 1].idx : cleaned.length;
     const block = cleaned.slice(start, end);
 
-    // Skip blocks that are absurdly long (probably grabbed the whole footer)
     if (block.length > 2000) continue;
 
-    // Skip blocks that are pure noise
     const firstLine = block.split('\n').find((l) => l.trim().length > 0) ?? '';
     if (NOISE_RE.test(firstLine.trim())) continue;
 
-    // Pull all amount candidates from the block; take the LAST plausible one
-    // (bank rows tend to have running-balance at the end after the amount, but
-    // the amount is typically the largest structured number besides balance —
-    // safer to take the first standalone one after removing very small "id" numbers).
-    const amountMatches = Array.from(block.matchAll(AMOUNT_RE))
-      .map((m) => ({
-        idx: m.index ?? 0,
-        raw: m[1],
-        value: parseFloat(m[1].replace(/,/g, '')),
-      }))
-      .filter(
-        (a) =>
-          !isNaN(a.value) &&
-          a.value >= MIN_AMOUNT &&
-          a.value <= MAX_AMOUNT &&
-          // Skip long digit runs that look like transaction IDs / phone numbers
-          a.raw.replace(/[,.]/g, '').length < 12,
-      );
+    // Scrub noise before extracting amount candidates so digits from times /
+    // reference IDs never enter the picker.
+    const scrubbed = block
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|AM|PM)?\b/g, ' ') // clock times
+      .replace(/\bT\d{12,}\b/g, ' ') // PhonePe txn IDs (T + long digit run)
+      .replace(/\b\d{12,}\b/g, ' ') // UTR / phone numbers
+      .replace(/\b(?:X{3,}|\*{3,})\d+\b/g, ' ') // masked account tails
+      .replace(/#\d+/g, ' ') // "Order #1234" style refs
+      .replace(/\bXXXXX\w+\b/gi, ' ');
 
-    if (amountMatches.length === 0) continue;
+    let chosenValue: number | null = null;
+    let chosenRaw: string | null = null;
 
-    // Pick the amount that appears LAST (bank rows: ... desc ... AMOUNT BALANCE
-    // is common but so is desc AMOUNT. Last one is usually the transaction amount.)
-    // If there's a clear CR/DR nearby, prefer that one.
-    const drCrPos = block.search(/\b(DR|CR|DEBIT|CREDIT)\b/i);
-    let chosen = amountMatches[amountMatches.length - 1];
-    if (drCrPos >= 0) {
-      const nearby = amountMatches
-        .filter((a) => Math.abs(a.idx - drCrPos) < 40)
-        .sort(
-          (x, y) => Math.abs(x.idx - drCrPos) - Math.abs(y.idx - drCrPos),
-        );
-      if (nearby[0]) chosen = nearby[0];
+    // STRATEGY 1: ₹ prefix wins
+    RUPEE_AMOUNT_RE.lastIndex = 0;
+    let ruMatch: RegExpExecArray | null;
+    let bestRupee: { value: number; raw: string } | null = null;
+    while ((ruMatch = RUPEE_AMOUNT_RE.exec(scrubbed)) !== null) {
+      const v = parseFloat(ruMatch[1].replace(/,/g, ''));
+      if (inRange(v)) {
+        // First ₹<number> encountered is usually the transaction amount
+        bestRupee = { value: v, raw: ruMatch[1] };
+        break;
+      }
+    }
+    if (bestRupee) {
+      chosenValue = bestRupee.value;
+      chosenRaw = bestRupee.raw;
     }
 
-    // Description = block text minus the chosen amount and minus DR/CR/DEBIT/CREDIT tokens
+    // STRATEGY 2: number immediately after DEBIT / CREDIT
+    if (chosenValue === null) {
+      const drCr = new RegExp(
+        `\\b(?:DEBIT|CREDIT|DR|CR)\\b[^\\d]{0,50}${AMOUNT_TOKEN.source}`,
+        'i',
+      ).exec(scrubbed);
+      if (drCr) {
+        const v = parseFloat(drCr[1].replace(/,/g, ''));
+        if (inRange(v)) {
+          chosenValue = v;
+          chosenRaw = drCr[1];
+        }
+      }
+    }
+
+    // STRATEGY 3: largest plausible number in the (scrubbed) block
+    if (chosenValue === null) {
+      const candidates = Array.from(scrubbed.matchAll(AMOUNT_RE))
+        .map((mm) => ({
+          raw: mm[1],
+          value: parseFloat(mm[1].replace(/,/g, '')),
+        }))
+        .filter((a) => inRange(a.value));
+      if (candidates.length === 0) continue;
+      const largest = candidates.reduce((best, cur) =>
+        cur.value > best.value ? cur : best,
+      );
+      chosenValue = largest.value;
+      chosenRaw = largest.raw;
+    }
+
+    if (chosenValue === null || chosenRaw === null) continue;
+
+    // Build description: strip anything money-shaped and structural noise.
     let description = block
-      .replace(new RegExp(`(?:₹\\s*)?${escapeRegex(chosen.raw)}`), ' ')
+      .replace(/₹\s*[\d,]+(?:\.\d+)?/g, ' ') // ₹<amount>
       .replace(/\b(DR|CR|DEBIT|CREDIT)\b/gi, ' ')
-      .replace(/\bT\d{15,}\b/g, ' ') // PhonePe transaction IDs
-      .replace(/\b\d{10,}\b/g, ' ') // long numeric ids / UTR / phone
+      .replace(/\bT\d{12,}\b/g, ' ')
+      .replace(/\b\d{12,}\b/g, ' ')
+      .replace(/\bXXXXX\w+\b/gi, ' ')
+      .replace(/\b(?:X{3,}|\*{3,})\d+\b/g, ' ')
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|AM|PM)?\b/gi, ' ')
+      .replace(/Transaction\s*ID/gi, ' ')
+      .replace(/UTR\s*(?:No\.?)?/gi, ' ')
+      .replace(/Paid by/gi, ' ')
+      .replace(/Credited to/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
 
@@ -192,14 +228,10 @@ function extractTransactionsFromText(text: string): Record<string, string>[] {
     records.push({
       Date: matches[i].date,
       Description: description,
-      Amount: String(chosen.value),
+      Amount: String(chosenValue),
       Type: type,
     });
   }
 
   return records;
-}
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
