@@ -94,7 +94,7 @@ export function Topbar({ user, goals = [] }: Props) {
             variant="ghost"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((value) => !value)}
+            onClick={() => setMobileOpen((v) => !v)}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -113,13 +113,15 @@ export function Topbar({ user, goals = [] }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             type="button"
             size="icon"
             variant="outline"
             aria-label="Toggle theme"
-            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            onClick={() =>
+              setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+            }
             className="h-9 w-9 rounded-full"
           >
             {resolvedTheme === 'dark' ? (
@@ -128,6 +130,7 @@ export function Topbar({ user, goals = [] }: Props) {
               <Moon className="h-4 w-4" />
             )}
           </Button>
+
           <div className="hidden sm:flex items-center gap-3 rounded-full border border-border/70 bg-card px-3 py-1.5">
             <div className="grid h-7 w-7 place-items-center rounded-full bg-accent/15 text-accent text-xs font-semibold">
               {initials}
@@ -190,7 +193,7 @@ export function Topbar({ user, goals = [] }: Props) {
             <div className="mt-3 rounded-xl border border-border/70 bg-gradient-to-br from-accent/10 to-transparent p-4">
               <div className="flex items-center gap-2 text-xs font-medium text-accent">
                 <Wallet className="h-3.5 w-3.5" />
-                SmartExpense
+                Wealth Sight
               </div>
               <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
                 Upload a CSV of your last 3 months to unlock spending trends and

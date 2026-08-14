@@ -16,11 +16,38 @@ const UserSchema = new Schema(
 export type UserDoc = InferSchemaType<typeof UserSchema> & { _id: mongoose.Types.ObjectId };
 export const User = (models.User as mongoose.Model<UserDoc>) || model<UserDoc>('User', UserSchema);
 
+/* ------------------------------------------------------- ImportBatch -- */
+// One record per CSV/Excel/PDF upload — lets the UI show statements
+// separately rather than merged into one giant list.
+const ImportBatchSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    name: { type: String, required: true, maxlength: 200 },
+    source: { type: String, enum: ['csv', 'excel', 'pdf', 'manual'], required: true },
+    fileName: { type: String, default: null },
+    inserted: { type: Number, default: 0 },
+    skippedDuplicates: { type: Number, default: 0 },
+    skippedInvalid: { type: Number, default: 0 },
+    categorizedByRule: { type: Number, default: 0 },
+    categorizedByAI: { type: Number, default: 0 },
+  },
+  { timestamps: { createdAt: 'createdAt', updatedAt: false } },
+);
+ImportBatchSchema.index({ userId: 1, createdAt: -1 });
+export type ImportBatchDoc = InferSchemaType<typeof ImportBatchSchema> & {
+  _id: mongoose.Types.ObjectId;
+};
+export const ImportBatch =
+  (models.ImportBatch as mongoose.Model<ImportBatchDoc>) ||
+  model<ImportBatchDoc>('ImportBatch', ImportBatchSchema);
+
 /* --------------------------------------------------------- Transaction -- */
 const TransactionSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     accountId: { type: Schema.Types.ObjectId, ref: 'Account', default: null },
+    // null → manual entry or pre-batch legacy row
+    batchId: { type: Schema.Types.ObjectId, ref: 'ImportBatch', default: null, index: true },
     amount: { type: Number, required: true },
     type: { type: String, enum: ['debit', 'credit'], required: true, default: 'debit' },
     date: { type: Date, required: true, index: true },
@@ -34,6 +61,7 @@ const TransactionSchema = new Schema(
 );
 TransactionSchema.index({ userId: 1, date: -1 });
 TransactionSchema.index({ userId: 1, dedupeHash: 1 });
+TransactionSchema.index({ userId: 1, batchId: 1 });
 export type TransactionDoc = InferSchemaType<typeof TransactionSchema> & {
   _id: mongoose.Types.ObjectId;
 };
@@ -117,6 +145,7 @@ export type Transaction = {
   id: string;
   userId: string;
   accountId: string | null;
+  batchId: string | null;
   amount: number;
   type: 'debit' | 'credit';
   date: Date;
@@ -126,6 +155,24 @@ export type Transaction = {
   isRecurring: boolean;
   dedupeHash: string;
   createdAt: Date;
+};
+
+export type ImportBatch = {
+  id: string;
+  userId: string;
+  name: string;
+  source: 'csv' | 'excel' | 'pdf' | 'manual';
+  fileName: string | null;
+  inserted: number;
+  skippedDuplicates: number;
+  skippedInvalid: number;
+  categorizedByRule: number;
+  categorizedByAI: number;
+  createdAt: Date;
+  // Counts / totals joined in server actions
+  txCount?: number;
+  totalDebit?: number;
+  totalCredit?: number;
 };
 export type Budget = {
   id: string;

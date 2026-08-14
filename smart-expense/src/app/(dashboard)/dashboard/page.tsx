@@ -1,49 +1,83 @@
 import Link from 'next/link';
-import { ArrowUpRight, ArrowDownRight, TrendingUp, Wallet, Upload, PlusCircle } from 'lucide-react';
-import { transactionStats, listTransactions } from '@/actions/transactions';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { format } from 'date-fns';
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Wallet,
+  Upload,
+  PlusCircle,
+  TrendingUp,
+  CalendarRange,
+} from 'lucide-react';
+import { listTransactions } from '@/actions/transactions';
+import {
+  computeHealthScore,
+  detectSubscriptions,
+  generateAiRecommendations,
+  monthlyTrend,
+  spendingSpikes,
+  topCategories,
+} from '@/actions/analysis';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { HealthGauge } from '@/components/charts/health-gauge';
-import { formatCurrency } from '@/lib/utils';
-import { EmptyState } from '@/components/dashboard/empty-state';
+import { SpendingPie } from '@/components/charts/spending-pie';
+import { MonthlyTrend } from '@/components/charts/monthly-trend';
+import { InsightCards } from '@/components/dashboard/insight-cards';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
+import { EmptyState } from '@/components/dashboard/empty-state';
+import { formatCurrency } from '@/lib/utils';
 
 export default async function DashboardHome() {
-  const [stats, recent] = await Promise.all([
-    transactionStats(),
+  const [score, top, trend, subs, spikes, recs, recent] = await Promise.all([
+    computeHealthScore(),
+    topCategories(6),
+    monthlyTrend(6),
+    detectSubscriptions(),
+    spendingSpikes(),
+    generateAiRecommendations(),
     listTransactions({ limit: 6 }),
   ]);
 
-  const hasData = (stats.total ?? 0) > 0;
-  const income = Number(stats.income ?? 0);
-  const expense = Number(stats.expense ?? 0);
-  const saved = income - expense;
-  const savingsRate = income > 0 ? Math.max(0, (saved / income) * 100) : 0;
-
-  // Placeholder health score (Day 2 replaces with real calc).
-  // Blends savings rate + expense discipline for a directional number.
-  const score = hasData
-    ? Math.round(Math.min(100, savingsRate * 0.6 + (expense > 0 ? 30 : 0) + 10))
-    : 0;
+  const hasData = score.metrics.income > 0 || score.metrics.expense > 0;
+  const saved = score.metrics.income - score.metrics.expense;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
             Financial Overview
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight mt-1">Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">
+            Dashboard
+          </h1>
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] sm:text-xs text-muted-foreground">
+            <CalendarRange className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              KPIs, score &amp; pie use{' '}
+              <b className="text-foreground">all your transactions</b>{' '}
+              · trend uses 6 months · budgets &amp; spikes are per-month
+            </span>
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button asChild variant="outline" className="flex-1 sm:flex-none">
             <Link href="/transactions">
-              <Upload className="h-4 w-4" /> Import CSV
+              <Upload className="h-4 w-4" />
+              <span className="hidden xs:inline">Import</span>
             </Link>
           </Button>
-          <Button asChild>
+          <Button asChild className="flex-1 sm:flex-none">
             <Link href="/transactions">
-              <PlusCircle className="h-4 w-4" /> Add transaction
+              <PlusCircle className="h-4 w-4" />
+              <span>Add transaction</span>
             </Link>
           </Button>
         </div>
@@ -52,7 +86,7 @@ export default async function DashboardHome() {
       {!hasData ? (
         <EmptyState
           title="No transactions yet"
-          description="Add your first transaction or upload a CSV to see your financial health, spending breakdown, and personalized insights."
+          description="Add your first transaction or import a CSV to see your financial health, spending breakdown, and personalized insights."
           ctaHref="/transactions"
           ctaLabel="Add transactions"
         />
@@ -67,23 +101,38 @@ export default async function DashboardHome() {
                 </CardDescription>
                 <CardTitle className="text-base font-medium">This month</CardTitle>
               </CardHeader>
-              <HealthGauge value={score} size={220} />
-              <p className="mt-4 text-sm text-muted-foreground text-center max-w-xs">
-                A quick blend of your savings and spending. Day-2 upgrade layers in
-                budgets, stability, and subscriptions.
-              </p>
+              <HealthGauge value={score.total} size={220} />
+              <div className="mt-6 grid grid-cols-5 gap-1.5 w-full text-center">
+                <ScoreCell label="Save" value={score.breakdown.savings} max={30} />
+                <ScoreCell label="Budget" value={score.breakdown.budgetAdherence} max={25} />
+                <ScoreCell label="Stable" value={score.breakdown.stability} max={20} />
+                <ScoreCell label="Subs" value={score.breakdown.subscriptions} max={15} />
+                <ScoreCell label="Goals" value={score.breakdown.emergencyFund} max={10} />
+              </div>
+              {score.breakdown.solvencyPenalty < 0 && (
+                <div className="mt-3 w-full rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center">
+                  <p className="text-xs text-destructive font-medium">
+                    Solvency penalty: <span className="num font-semibold">{score.breakdown.solvencyPenalty}</span>
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {score.metrics.income === 0
+                      ? 'No tracked income while spending is happening.'
+                      : 'Spending is running above income.'}
+                  </p>
+                </div>
+              )}
             </Card>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <KPI
                 label="Income"
-                value={income}
+                value={score.metrics.income}
                 icon={<ArrowUpRight className="h-4 w-4" />}
                 positive
               />
               <KPI
                 label="Expenses"
-                value={expense}
+                value={score.metrics.expense}
                 icon={<ArrowDownRight className="h-4 w-4" />}
               />
               <KPI
@@ -99,10 +148,10 @@ export default async function DashboardHome() {
                       Savings rate
                     </p>
                     <p className="text-3xl font-semibold num mt-1">
-                      {savingsRate.toFixed(1)}%
+                      {(score.metrics.savingsRate * 100).toFixed(1)}%
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      of income kept this period
+                      of income kept this period · transfers excluded
                     </p>
                   </div>
                   <div className="text-accent">
@@ -111,56 +160,60 @@ export default async function DashboardHome() {
                 </div>
                 <div className="mt-4 h-2 rounded-full bg-secondary overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-accent to-emerald-400 transition-all"
-                    style={{ width: `${Math.min(100, savingsRate)}%` }}
+                    className="h-full bg-gradient-to-r from-accent to-emerald-400 transition-all duration-700"
+                    style={{
+                      width: `${Math.min(100, score.metrics.savingsRate * 100)}%`,
+                    }}
                   />
                 </div>
               </Card>
             </div>
           </div>
 
-          {/* Row 2 — Recent + charts placeholders */}
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Recent transactions</CardTitle>
-                  <CardDescription>
-                    Latest 6 across all your imports
-                  </CardDescription>
-                </div>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/transactions">View all</Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <RecentTransactions rows={recent} />
-              </CardContent>
-            </Card>
+          {/* Row 2 — Insight cards */}
+          <InsightCards
+            recommendations={recs}
+            spikes={spikes}
+            subscriptions={subs}
+          />
 
+          {/* Row 3 — Charts */}
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Charts arrive Day 2</CardTitle>
-                <CardDescription>
-                  Spending pie · Monthly trend · Budget bars
-                </CardDescription>
+                <CardTitle>Where money goes</CardTitle>
+                <CardDescription>Top categories this month</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-3">
-                  {['Pie: Top categories', 'Line: Monthly trend', 'Bars: Budgets'].map(
-                    (t) => (
-                      <div
-                        key={t}
-                        className="rounded-lg border border-dashed border-border/70 bg-secondary/30 p-4 text-sm text-muted-foreground"
-                      >
-                        {t}
-                      </div>
-                    ),
-                  )}
-                </div>
+                <SpendingPie data={top} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Income vs expense</CardTitle>
+                <CardDescription>Last 6 months</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MonthlyTrend data={trend} />
               </CardContent>
             </Card>
           </div>
+
+          {/* Row 4 — Recent */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Recent transactions</CardTitle>
+                <CardDescription>Latest 6 across all your imports</CardDescription>
+              </div>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/transactions">View all</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <RecentTransactions rows={recent} />
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
@@ -196,5 +249,31 @@ function KPI({
       </div>
       <p className="mt-3 text-2xl font-semibold num">{formatCurrency(value)}</p>
     </Card>
+  );
+}
+
+function ScoreCell({
+  label,
+  value,
+  max,
+}: {
+  label: string;
+  value: number;
+  max: number;
+}) {
+  const pct = max > 0 ? value / max : 0;
+  const color = pct >= 0.66 ? 'text-success' : pct >= 0.33 ? 'text-warning' : 'text-destructive';
+  return (
+    <div className="rounded-md bg-secondary/40 py-2">
+      <p className={`text-sm font-semibold num ${color}`}>
+        {value}
+        <span className="text-[10px] text-muted-foreground font-normal">
+          /{max}
+        </span>
+      </p>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+        {label}
+      </p>
+    </div>
   );
 }

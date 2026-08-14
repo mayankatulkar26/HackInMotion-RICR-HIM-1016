@@ -2,9 +2,11 @@ import type {
   TransactionDoc,
   BudgetDoc,
   SavingsGoalDoc,
+  ImportBatchDoc,
   Transaction,
   Budget,
   SavingsGoal,
+  ImportBatch,
 } from './models';
 
 /**
@@ -17,6 +19,7 @@ export function toTransaction(d: TransactionDoc): Transaction {
     id: String(d._id),
     userId: String(d.userId),
     accountId: d.accountId ? String(d.accountId) : null,
+    batchId: d.batchId ? String(d.batchId) : null,
     amount: d.amount,
     type: d.type,
     date: new Date(d.date),
@@ -25,6 +28,22 @@ export function toTransaction(d: TransactionDoc): Transaction {
     category: d.category,
     isRecurring: Boolean(d.isRecurring),
     dedupeHash: d.dedupeHash,
+    createdAt: new Date(d.createdAt),
+  };
+}
+
+export function toImportBatch(d: ImportBatchDoc): ImportBatch {
+  return {
+    id: String(d._id),
+    userId: String(d.userId),
+    name: d.name,
+    source: d.source,
+    fileName: d.fileName ?? null,
+    inserted: d.inserted,
+    skippedDuplicates: d.skippedDuplicates,
+    skippedInvalid: d.skippedInvalid,
+    categorizedByRule: d.categorizedByRule,
+    categorizedByAI: d.categorizedByAI,
     createdAt: new Date(d.createdAt),
   };
 }

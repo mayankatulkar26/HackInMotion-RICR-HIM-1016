@@ -4,7 +4,29 @@ import { CATEGORIES, type Category } from './categories';
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
-const MODEL = 'gemini-1.5-flash';
+// Google decommissioned the numbered aliases (gemini-1.5-flash / 2.0-flash /
+// 2.5-flash) for new API keys — they all 404. `gemini-flash-latest` is the
+// rolling alias to whatever's currently GA and stays working long-term.
+// Override with GEMINI_MODEL in .env if you have access to a specific version.
+const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+
+/**
+ * Call Gemini with one automatic retry for transient failures (503 overloaded,
+ * 429 rate-limited). Waits ~1.2s before the second attempt. Any other error
+ * bubbles up to the caller's own catch block.
+ */
+async function callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: any) {
+    const status = err?.status ?? err?.response?.status;
+    if (status === 503 || status === 429) {
+      await new Promise((r) => setTimeout(r, 1200));
+      return fn();
+    }
+    throw err;
+  }
+}
 
 export function isGeminiConfigured(): boolean {
   return Boolean(genAI);
@@ -42,7 +64,7 @@ Descriptions (${descriptions.length}):
 ${descriptions.map((d, i) => `${i + 1}. ${d}`).join('\n')}`;
 
   try {
-    const res = await model.generateContent(prompt);
+    const res = await callWithRetry(() => model.generateContent(prompt));
     const text = res.response.text().trim();
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, '');
     const parsed = JSON.parse(jsonStr);
@@ -80,7 +102,7 @@ Return a JSON array of strings only, no prose.
 METRICS:
 ${JSON.stringify(payload, null, 2)}`;
   try {
-    const res = await model.generateContent(prompt);
+    const res = await callWithRetry(() => model.generateContent(prompt));
     const text = res.response.text().trim().replace(/^```(?:json)?\s*|\s*```$/g, '');
     const arr = JSON.parse(text);
     if (Array.isArray(arr)) return arr.filter((x) => typeof x === 'string').slice(0, 5);
@@ -112,7 +134,7 @@ ${context}
 
 QUESTION: ${question}`;
   try {
-    const res = await model.generateContent(prompt);
+    const res = await callWithRetry(() => model.generateContent(prompt));
     return res.response.text().trim();
   } catch (err) {
     console.error('[gemini] chat failed:', err);
