@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { format } from 'date-fns';
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -13,10 +15,12 @@ import {
   computeHealthScore,
   detectSubscriptions,
   generateAiRecommendations,
+  listAvailableMonths,
   monthlyTrend,
   spendingSpikes,
   topCategories,
 } from '@/actions/analysis';
+import { MonthFilter } from '@/components/dashboard/month-filter';
 import {
   Card,
   CardContent,
@@ -32,16 +36,24 @@ import { InsightCards } from '@/components/dashboard/insight-cards';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { formatCurrency } from '@/lib/utils';
+import { monthLabel, normalizeMonthFilter } from '@/lib/dashboard-filter';
 
 export default async function DashboardHome() {
-  const [score, top, trend, subs, spikes, recs, recent] = await Promise.all([
-    computeHealthScore(),
-    topCategories(6),
-    monthlyTrend(6),
-    detectSubscriptions(),
-    spendingSpikes(),
-    generateAiRecommendations(),
-    listTransactions({ limit: 6 }),
+  const filterMonth = normalizeMonthFilter((await cookies()).get('smart-expense-month')?.value ?? null);
+
+  const [score, top, trend, subs, spikes, recs, recent, months] = await Promise.all([
+    computeHealthScore({ month: filterMonth }),
+    topCategories(6, filterMonth),
+    monthlyTrend(6, filterMonth),
+    detectSubscriptions(filterMonth),
+    spendingSpikes(filterMonth),
+    generateAiRecommendations(filterMonth),
+    listTransactions({
+      limit: 6,
+      from: filterMonth ? `${filterMonth}-01` : undefined,
+      to: filterMonth ? `${filterMonth}-31` : undefined,
+    }),
+    listAvailableMonths(),
   ]);
 
   const hasData = score.metrics.income > 0 || score.metrics.expense > 0;
@@ -61,12 +73,13 @@ export default async function DashboardHome() {
             <CalendarRange className="h-3.5 w-3.5 shrink-0" />
             <span>
               KPIs, score &amp; pie use{' '}
-              <b className="text-foreground">all your transactions</b>{' '}
+              <b className="text-foreground">{filterMonth ? monthLabel(filterMonth) : 'all your transactions'}</b>{' '}
               · trend uses 6 months · budgets &amp; spikes are per-month
             </span>
           </p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <MonthFilter current={filterMonth} months={months} />
           <Button asChild variant="outline" className="flex-1 sm:flex-none">
             <Link href="/transactions">
               <Upload className="h-4 w-4" />
@@ -98,7 +111,9 @@ export default async function DashboardHome() {
                 <CardDescription className="uppercase tracking-wider text-xs">
                   Financial Health
                 </CardDescription>
-                <CardTitle className="text-base font-medium">This month</CardTitle>
+                <CardTitle className="text-base font-medium">
+                  {filterMonth ? monthLabel(filterMonth) : 'All time'}
+                </CardTitle>
               </CardHeader>
               <HealthGauge value={score.total} size={220} />
               <div className="mt-6 grid grid-cols-5 gap-1.5 w-full text-center">

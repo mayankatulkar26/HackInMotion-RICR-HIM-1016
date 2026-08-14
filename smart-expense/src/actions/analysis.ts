@@ -5,6 +5,7 @@ import { connectDb } from '@/db';
 import { Transaction, Budget, SavingsGoal } from '@/db/models';
 import { auth } from '@/lib/auth';
 import { generateRecommendations } from '@/lib/gemini';
+import { monthRangeForFilter } from '@/lib/dashboard-filter';
 import { monthKey } from '@/lib/utils';
 
 /**
@@ -38,6 +39,22 @@ function startOfMonth(d: Date): Date {
   return s;
 }
 
+/**
+ * "YYYY-MM" → { start, end } (exclusive) for that calendar month.
+ * `all` or undefined returns undefined (no date filter).
+ */
+function monthBounds(
+  month?: string,
+): { start: Date; end: Date; key: string } | null {
+  if (!month || month === 'all' || !/^\d{4}-\d{2}$/.test(month)) return null;
+  const [y, m] = month.split('-').map(Number);
+  return {
+    start: new Date(y, m - 1, 1),
+    end: new Date(y, m, 1),
+    key: month,
+  };
+}
+
 /* -------------------------------------------------- Aggregation helpers -- */
 
 /** Sum of debit transactions per category since `since`. */
@@ -52,17 +69,33 @@ export async function spendByCategorySince(
   return Object.fromEntries(rows.map((r) => [r._id, r.total]));
 }
 
+/** Same shape as `spendByCategorySince`, bounded on both ends. */
+export async function spendByCategoryBetween(
+  start: Date,
+  end: Date,
+): Promise<Record<string, number>> {
+  const userId = await requireUser();
+  const rows = await Transaction.aggregate<{ _id: string; total: number }>([
+    { $match: { userId, type: 'debit', date: { $gte: start, $lt: end } } },
+    { $group: { _id: '$category', total: { $sum: '$amount' } } },
+  ]);
+  return Object.fromEntries(rows.map((r) => [r._id, r.total]));
+}
+
 /** Top N spending categories across ALL user data, largest first. */
 export async function topCategories(
   limit = 6,
+  month?: string | null,
 ): Promise<Array<{ category: string; amount: number }>> {
   const userId = await requireUser();
+  const dateFilter = month ? monthRangeForFilter(month) : null;
   const rows = await Transaction.aggregate<{ _id: string; total: number }>([
     {
       $match: {
         userId,
         type: 'debit',
         category: { $nin: EXCLUDE_FROM_TOTALS },
+        ...(dateFilter ? { date: { $gte: dateFilter.start, $lte: dateFilter.end } } : {}),
       },
     },
     { $group: { _id: '$category', total: { $sum: '$amount' } } },
@@ -78,9 +111,10 @@ export async function topCategories(
  */
 export async function monthlyTrend(
   months = 6,
+  month?: string | null,
 ): Promise<Array<{ month: string; income: number; expense: number }>> {
   const userId = await requireUser();
-  const now = new Date();
+  const now = month ? new Date(`${month}-01T00:00:00Z`) : new Date();
   const startRef = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
 
   const rows = await Transaction.aggregate<{
@@ -123,13 +157,13 @@ export async function monthlyTrend(
  * across the prior 90 days. Rolling windows (not calendar-aligned) so users
  * with sparse or partial-month data still see meaningful comparisons.
  */
-export async function spendingSpikes(): Promise<
-  Array<{ category: string; current: number; average: number; ratio: number }>
-> {
+export async function spendingSpikes(
+  month?: string | null,
+): Promise<Array<{ category: string; current: number; average: number; ratio: number }>> {
   const userId = await requireUser();
-  const now = new Date();
-  const recentStart = new Date(now.getTime() - 30 * 86_400_000);
-  const compareStart = new Date(now.getTime() - 120 * 86_400_000);
+  const now = month ? new Date(`${month}-01T00:00:00Z`) : new Date();
+  const recentStart = month ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)) : new Date(now.getTime() - 30 * 86_400_000);
+  const compareStart = month ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1, 0, 0, 0, 0)) : new Date(now.getTime() - 120 * 86_400_000);
 
   const [current, past] = await Promise.all([
     Transaction.aggregate<{ _id: string; total: number }>([
@@ -176,7 +210,9 @@ export async function spendingSpikes(): Promise<
  * 20-40 days. Also captures the last-seen date so the UI can warn about
  * subscriptions that haven't triggered recently.
  */
-export async function detectSubscriptions(): Promise<
+export async function detectSubscriptions(
+  month?: string | null,
+): Promise<
   Array<{
     merchant: string;
     category: string;
@@ -188,13 +224,14 @@ export async function detectSubscriptions(): Promise<
   }>
 > {
   const userId = await requireUser();
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const range = month ? monthRangeForFilter(month) : null;
+  const sixMonthsAgo = range ? range.start : new Date();
+  if (!range) sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
   const rows = await Transaction.find({
     userId,
     type: 'debit',
-    date: { $gte: sixMonthsAgo },
+    date: range ? { $gte: range.start, $lte: range.end } : { $gte: sixMonthsAgo },
     merchantName: { $exists: true, $ne: null },
   })
     .select({ merchantName: 1, amount: 1, date: 1, category: 1 })
@@ -283,17 +320,19 @@ function coefficientOfVariation(values: number[]): number {
   return Math.sqrt(variance) / mean;
 }
 
-export async function computeHealthScore(): Promise<HealthScore> {
+export async function computeHealthScore(options?: { month?: string | null }): Promise<HealthScore> {
   const userId = await requireUser();
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const m = monthKey(now);
+  const month = options?.month ?? null;
+  const now = month ? new Date(`${month}-01T00:00:00Z`) : new Date();
+  const monthRange = monthRangeForFilter(month);
+  const monthStart = monthRange ? monthRange.start : startOfMonth(now);
+  const m = month ?? monthKey(now);
 
   // KPI totals span ALL user data (see header note on the dashboard). Budget
   // adherence still uses the current month because budgets are stored per month.
   const [trend, subs, monthBudgets, goals, totals] = await Promise.all([
-    monthlyTrend(6),
-    detectSubscriptions(),
+    monthlyTrend(6, month),
+    detectSubscriptions(month),
     Budget.find({ userId, month: m }).lean(),
     SavingsGoal.find({ userId }).lean(),
     Transaction.aggregate<{ _id: 'debit' | 'credit'; total: number }>([
@@ -301,6 +340,7 @@ export async function computeHealthScore(): Promise<HealthScore> {
         $match: {
           userId,
           category: { $nin: EXCLUDE_FROM_TOTALS },
+          ...(monthRange ? { date: { $gte: monthRange.start, $lte: monthRange.end } } : {}),
         },
       },
       { $group: { _id: '$type', total: { $sum: '$amount' } } },
@@ -311,8 +351,12 @@ export async function computeHealthScore(): Promise<HealthScore> {
   const expense = totals.find((r) => r._id === 'debit')?.total ?? 0;
   const savingsRate = income > 0 ? Math.max(0, (income - expense) / income) : 0;
 
-  // Per-category actuals for the CURRENT month → budget adherence check.
-  const spentThisMonth = await spendByCategorySince(monthStart);
+  // Per-category actuals inside the selected month → budget adherence check.
+  // Bounded when a specific month is picked so August budgets aren't compared
+  // to September-plus totals.
+  const spentThisMonth = monthRange
+    ? await spendByCategoryBetween(monthRange.start, monthRange.end)
+    : await spendByCategorySince(monthStart);
   const budgetsTotal = monthBudgets.length;
   const budgetsMet = monthBudgets.filter(
     (b) => (spentThisMonth[b.category] ?? 0) <= b.monthlyLimit,
@@ -431,17 +475,31 @@ const globalForRecs = globalThis as unknown as { _recCache?: Map<string, RecEntr
 const recCache = globalForRecs._recCache ?? new Map<string, RecEntry>();
 globalForRecs._recCache = recCache;
 
-export async function generateAiRecommendations(): Promise<string[]> {
+/**
+ * Distinct YYYY-MM values the current user has at least one transaction in,
+ * newest month first. Populates the month-selector dropdown.
+ */
+export async function listAvailableMonths(): Promise<string[]> {
+  const userId = await requireUser();
+  const rows = await Transaction.aggregate<{ _id: string }>([
+    { $match: { userId } },
+    { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$date' } } } },
+    { $sort: { _id: -1 } },
+  ]);
+  return rows.map((r) => r._id);
+}
+
+export async function generateAiRecommendations(month?: string | null): Promise<string[]> {
   const userId = String(await requireUser());
-  const cached = recCache.get(userId);
+  const cached = recCache.get(`${userId}:${month ?? 'all'}`);
   if (cached && Date.now() - cached.at < RECS_TTL_MS) {
     return cached.recs;
   }
 
   const [score, top, trend] = await Promise.all([
-    computeHealthScore(),
-    topCategories(5),
-    monthlyTrend(3),
+    computeHealthScore({ month }),
+    topCategories(5, month),
+    monthlyTrend(3, month),
   ]);
   const recs = await generateRecommendations({
     income: score.metrics.income,
@@ -453,7 +511,7 @@ export async function generateAiRecommendations(): Promise<string[]> {
   // Only cache non-empty results — empty [] is usually a 503 or missing key,
   // and we want to retry on the next request instead of pinning a blank card.
   if (recs.length > 0) {
-    recCache.set(userId, { at: Date.now(), recs });
+    recCache.set(`${userId}:${month ?? 'all'}`, { at: Date.now(), recs });
   }
   return recs;
 }

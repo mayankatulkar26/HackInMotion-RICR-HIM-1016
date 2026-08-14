@@ -96,8 +96,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   exit={{ opacity: 0, scale: 0.96, y: 8 }}
                   transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                   className={cn(
-                    'fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2',
-                    'rounded-xl border bg-card p-6 shadow-soft-lg focus:outline-none',
+                    'fixed left-1/2 top-1/2 z-50 w-[min(92vw,28rem)] -translate-x-1/2 -translate-y-1/2',
+                    'rounded-xl border bg-card p-4 shadow-soft-lg focus:outline-none',
                     opts.destructive
                       ? 'border-destructive/40'
                       : 'border-border',
@@ -105,17 +105,17 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 >
                   <div className="flex items-start gap-3">
                     {opts.destructive && (
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-destructive/15 text-destructive">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-destructive/15 text-destructive">
                         <AlertTriangle className="h-4 w-4" />
                       </span>
                     )}
                     <div className="min-w-0 flex-1">
-                      <Dialog.Title className="text-lg font-semibold leading-tight">
+                      <Dialog.Title className="text-base font-semibold leading-snug break-words">
                         {opts.title}
                       </Dialog.Title>
                       {opts.description && (
                         <Dialog.Description
-                          className="mt-2 text-sm text-muted-foreground leading-relaxed"
+                          className="mt-2 text-xs text-muted-foreground leading-relaxed break-words"
                           asChild
                         >
                           <div>{opts.description}</div>
@@ -126,7 +126,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
                   {opts.requireTyping && (
                     <div className="mt-4 space-y-1.5">
-                      <Label htmlFor="confirm-typed" className="text-xs">
+                      <Label htmlFor="confirm-typed" className="text-[11px] text-muted-foreground">
                         Type{' '}
                         <span className="font-mono text-destructive">
                           {opts.requireTyping}
@@ -144,24 +144,28 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                         }}
                         placeholder={opts.requireTyping}
                         className={cn(
+                          'h-9 text-sm',
                           typed && !typingOk && 'border-destructive/60',
                         )}
                       />
                     </div>
                   )}
 
-                  <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <Button
                       variant="ghost"
+                      size="sm"
                       onClick={() => finish(false)}
                       className="sm:w-auto"
                     >
                       {opts.cancelLabel ?? 'Cancel'}
                     </Button>
                     <Button
+                      size="sm"
                       onClick={() => finish(true)}
                       disabled={!typingOk}
                       className={cn(
+                        'min-w-[8rem]',
                         opts.destructive &&
                           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
                       )}

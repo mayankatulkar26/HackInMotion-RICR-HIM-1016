@@ -32,36 +32,76 @@ export function isGeminiConfigured(): boolean {
   return Boolean(genAI);
 }
 
+export type CategorizeInput =
+  | string
+  | { description: string; amount?: number; type?: 'debit' | 'credit' };
+
 /**
- * Batch-categorize up to 20 transaction descriptions in one Gemini call.
- * Returns an array of categories aligned to input order. Falls back to
- * 'Other' for any item Gemini can't classify.
+ * Batch-categorize up to 20 transactions in one Gemini call.
  *
- * Guarantees: the returned array has the same length as `descriptions`.
- * On any error (no key, quota, network), returns 'Uncategorized' for every
- * item — the caller layers this behind the rule-based categorizer, so a
- * silent Gemini failure just means fewer auto-labels, not broken import.
+ * Inputs may be plain description strings or richer `{description, amount,
+ * type}` objects — the richer form lets the model use amount magnitude and
+ * debit/credit direction as signals (₹15 debit to a "namkeen" shop is Food;
+ * ₹18,000 debit labelled "rent transfer" is Rent).
+ *
+ * Guarantees: the returned array has the same length as `inputs`. On any
+ * error (no key, quota, network) every slot gets 'Uncategorized', so the
+ * caller can keep the row rather than failing the whole import.
  */
 export async function categorizeWithGemini(
-  descriptions: string[],
+  inputs: CategorizeInput[],
 ): Promise<Category[]> {
-  const fallback: Category[] = descriptions.map(() => 'Uncategorized');
-  if (!genAI || descriptions.length === 0) return fallback;
+  const fallback: Category[] = inputs.map(() => 'Uncategorized');
+  if (!genAI || inputs.length === 0) return fallback;
+
+  // Normalize to objects
+  const items = inputs.map((x) =>
+    typeof x === 'string' ? { description: x } : x,
+  );
 
   const model = genAI.getGenerativeModel({ model: MODEL });
   const list = CATEGORIES.filter((c) => c !== 'Uncategorized').join(', ');
 
-  const prompt = `You are a strict transaction categorizer for an Indian personal finance app.
-Categorize each transaction description into EXACTLY one of these categories:
+  const numbered = items
+    .map((it, i) => {
+      const bits = [it.description];
+      if (typeof it.amount === 'number') bits.push(`amount=₹${it.amount}`);
+      if (it.type) bits.push(`type=${it.type}`);
+      return `${i + 1}. ${bits.join(' · ')}`;
+    })
+    .join('\n');
+
+  const prompt = `You are an expert transaction categorizer for an Indian personal finance app.
+Descriptions come from PhonePe / GPay / UPI / bank statements and often contain
+Hinglish merchant names, short forms, or typos.
+
+Categorize each transaction into EXACTLY one of these categories:
 ${list}
 
-Rules:
-- Return ONLY a JSON array of category strings, no prose, no code fences.
-- Array length MUST equal input length.
-- Use "Other" if genuinely unclear.
+Indian merchant hints (use them to reason, don't blindly memorize):
+- "chmest" / "chemist" / "medical" / "pharmacy" / "hospital" / "clinic" → Healthcare
+- "kirana" / "general store" / "provisions" / "aata chakki" / "sabzi" / "milk" / "dairy" → Groceries
+- "namkeen" / "sweets" / "chaat" / "restaurant" / "dhaba" / "cafe" / "tiffin" / "biryani" / "hotel" / "pizza" / "momos" → Food
+- "garments" / "fashion" / "clothing" / "apparel" / "footwear" / "boutique" → Shopping
+- "electricals" / "hardware" / "electronics" / "mobile" / "recharge" → Bills
+- "petrol" / "fuel" / "auto" / "cab" / "travels" / "railway" / "irctc" / "toll" → Travel
+- "school" / "college" / "tuition" / "coaching" / "book" / "stationery" → Education
+- "temple" / "religious" / "donation" → Other
+- "gaming" / "movie" / "cinema" / "concert" → Entertainment
+- "rent" (with big round amount like 5000-50000) → Rent
+- "salary" / "payroll" / "stipend" / "wages" → Salary
+- Small debit (<₹200) to a person name → often Food (snack / tea / small vendor)
+- Large debit (>₹10,000) to a person name with no shop word → likely Rent or Transfer
+- Person-to-person credit / "Received from <person>" → Other (a repayment, gift, or split)
 
-Descriptions (${descriptions.length}):
-${descriptions.map((d, i) => `${i + 1}. ${d}`).join('\n')}`;
+Rules:
+- Return ONLY a JSON array of category strings — no prose, no code fences.
+- Array length MUST equal input length (${items.length}).
+- Prefer a specific category over "Other" whenever the merchant name gives ANY hint.
+- Use "Other" only when the description is truly a person's name with no shop word AND you have no other signal.
+
+Transactions (${items.length}):
+${numbered}`;
 
   try {
     const res = await callWithRetry(() => model.generateContent(prompt));
@@ -69,7 +109,7 @@ ${descriptions.map((d, i) => `${i + 1}. ${d}`).join('\n')}`;
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, '');
     const parsed = JSON.parse(jsonStr);
     if (!Array.isArray(parsed)) return fallback;
-    return descriptions.map((_, i) => {
+    return items.map((_, i) => {
       const c = parsed[i];
       return (CATEGORIES as readonly string[]).includes(c)
         ? (c as Category)

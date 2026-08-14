@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Search, Trash2 } from 'lucide-react';
@@ -18,12 +18,40 @@ import { CATEGORIES, categoryColor } from '@/lib/categories';
 import { cn, formatCurrency } from '@/lib/utils';
 import { deleteTransaction } from '@/actions/transactions';
 
+function readSavedMonthFilter(): string {
+  if (typeof document === 'undefined') return 'All';
+  const match = document.cookie.match(/(?:^|; )smart-expense-month=([^;]*)/);
+  const raw = match ? decodeURIComponent(match[1]) : '';
+  return raw ? raw : 'All';
+}
+
+function persistMonthFilter(value: string) {
+  if (typeof document === 'undefined') return;
+  if (value === 'All') {
+    document.cookie = 'smart-expense-month=; path=/; max-age=0';
+    return;
+  }
+  document.cookie = `smart-expense-month=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}`;
+}
+
 export function TransactionTable({ rows }: { rows: Transaction[] }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('All');
-  const [month, setMonth] = useState('All');
+  const [month, setMonth] = useState<string>('All');
   const [year, setYear] = useState('All');
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const savedMonth = readSavedMonthFilter();
+    if (savedMonth !== 'All') {
+      setMonth(savedMonth);
+    }
+  }, []);
+
+  function handleMonthChange(next: string) {
+    setMonth(next);
+    persistMonthFilter(next);
+  }
 
   const yearOptions = useMemo(() => {
     const years = [...new Set(rows.map((r) => new Date(r.date).getFullYear()))].sort((a, b) => b - a);
@@ -115,7 +143,7 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
             ))}
           </SelectContent>
         </Select>
-        <Select value={month} onValueChange={setMonth}>
+        <Select value={month} onValueChange={handleMonthChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue />
           </SelectTrigger>

@@ -202,7 +202,13 @@ export async function importTransactions(
     if (stillUncat.length > 0) {
       for (let i = 0; i < stillUncat.length; i += 20) {
         const batch = stillUncat.slice(i, i + 20);
-        const cats = await categorizeWithGemini(batch.map((b) => b.description));
+        const cats = await categorizeWithGemini(
+          batch.map((b) => ({
+            description: b.description,
+            amount: b.amount,
+            type: b.type,
+          })),
+        );
         const newCacheEntries: Array<{ merchantKey: string; category: string }> = [];
         for (let j = 0; j < batch.length; j++) {
           const c = cats[j];
@@ -369,8 +375,9 @@ export async function recategorizeAllTransactions(): Promise<{
   updatedByAI: number;
 }> {
   const userId = await requireUser();
+  // Pull amount + type too so Gemini has the same context as during import.
   const all = await Transaction.find({ userId })
-    .select({ description: 1, category: 1, merchantName: 1 })
+    .select({ description: 1, category: 1, merchantName: 1, amount: 1, type: 1 })
     .lean();
 
   if (all.length === 0) {
@@ -387,7 +394,13 @@ export async function recategorizeAllTransactions(): Promise<{
   const cacheMap = new Map(cached.map((c) => [c.merchantKey, c.category]));
 
   const ruleUpdates: Array<{ id: mongoose.Types.ObjectId; category: string }> = [];
-  const needsAi: Array<{ id: mongoose.Types.ObjectId; description: string; merchantName: string | null }> = [];
+  const needsAi: Array<{
+    id: mongoose.Types.ObjectId;
+    description: string;
+    merchantName: string | null;
+    amount: number;
+    type: 'debit' | 'credit';
+  }> = [];
 
   for (const t of all) {
     const rule = ruleBasedCategorize(t.description);
@@ -413,6 +426,8 @@ export async function recategorizeAllTransactions(): Promise<{
         id: t._id,
         description: t.description,
         merchantName: t.merchantName ?? null,
+        amount: t.amount,
+        type: t.type,
       });
     }
   }
@@ -438,7 +453,13 @@ export async function recategorizeAllTransactions(): Promise<{
 
     for (let i = 0; i < needsAi.length; i += 20) {
       const batch = needsAi.slice(i, i + 20);
-      const cats = await categorizeWithGemini(batch.map((b) => b.description));
+      const cats = await categorizeWithGemini(
+        batch.map((b) => ({
+          description: b.description,
+          amount: b.amount,
+          type: b.type,
+        })),
+      );
       for (let j = 0; j < batch.length; j++) {
         const c = cats[j];
         if (c && c !== 'Uncategorized') {
