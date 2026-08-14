@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { HealthGauge } from '@/components/charts/health-gauge';
 
 export function LandingHero() {
@@ -48,14 +48,15 @@ export function LandingHero() {
           transition={{ duration: 0.6, delay: 0.25 }}
           className="mt-8 flex flex-wrap items-center gap-3"
         >
-          <Button asChild size="xl">
-            <Link href="/signup">
+          <Link
+            href="/signup"
+            className={`${buttonVariants({ size: 'xl' })} group relative overflow-hidden border border-accent bg-accent text-accent-foreground transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-glow active:scale-[0.98]`}
+          >
+            <span className="absolute inset-0 origin-left scale-x-0 bg-emerald-500 transition-transform duration-300 ease-out group-hover:scale-x-100" />
+            <span className="relative z-10 flex items-center gap-2 group-hover:[animation:button-shake_0.35s_ease-in-out_1]">
               Start free <ArrowRight className="h-5 w-5" />
-            </Link>
-          </Button>
-          <Button asChild size="xl" variant="outline">
-            <Link href="/login">See the demo</Link>
-          </Button>
+            </span>
+          </Link>
         </motion.div>
 
         <motion.div

@@ -42,23 +42,23 @@ export function NavList({ onNavigate, layoutId = 'sidebar-active' }: Props) {
             href={item.href}
             onClick={onNavigate}
             className={cn(
-              'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all group',
+              'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-out group',
               active
                 ? 'text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50',
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/70 hover:shadow-sm hover:translate-x-0.5',
             )}
           >
             {active && (
               <motion.span
                 layoutId={layoutId}
-                className="absolute inset-0 rounded-lg bg-accent/12 border border-accent/25"
+                className="absolute inset-0 rounded-lg bg-accent/12 border border-accent/25 shadow-sm"
                 transition={{ type: 'spring', stiffness: 400, damping: 34 }}
               />
             )}
             <item.icon
               className={cn(
-                'h-4 w-4 relative shrink-0 transition-colors',
-                active ? 'text-accent' : 'group-hover:text-accent',
+                'h-4 w-4 relative shrink-0 transition-all duration-200',
+                active ? 'text-accent' : 'group-hover:text-accent group-hover:scale-110',
               )}
             />
             <span className="relative">{item.label}</span>

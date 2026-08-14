@@ -39,6 +39,22 @@ function startOfMonth(d: Date): Date {
   return s;
 }
 
+/**
+ * "YYYY-MM" → { start, end } (exclusive) for that calendar month.
+ * `all` or undefined returns undefined (no date filter).
+ */
+function monthBounds(
+  month?: string,
+): { start: Date; end: Date; key: string } | null {
+  if (!month || month === 'all' || !/^\d{4}-\d{2}$/.test(month)) return null;
+  const [y, m] = month.split('-').map(Number);
+  return {
+    start: new Date(y, m - 1, 1),
+    end: new Date(y, m, 1),
+    key: month,
+  };
+}
+
 /* -------------------------------------------------- Aggregation helpers -- */
 
 /** Sum of debit transactions per category since `since`. */
@@ -48,6 +64,19 @@ export async function spendByCategorySince(
   const userId = await requireUser();
   const rows = await Transaction.aggregate<{ _id: string; total: number }>([
     { $match: { userId, type: 'debit', date: { $gte: since } } },
+    { $group: { _id: '$category', total: { $sum: '$amount' } } },
+  ]);
+  return Object.fromEntries(rows.map((r) => [r._id, r.total]));
+}
+
+/** Same shape as `spendByCategorySince`, bounded on both ends. */
+export async function spendByCategoryBetween(
+  start: Date,
+  end: Date,
+): Promise<Record<string, number>> {
+  const userId = await requireUser();
+  const rows = await Transaction.aggregate<{ _id: string; total: number }>([
+    { $match: { userId, type: 'debit', date: { $gte: start, $lt: end } } },
     { $group: { _id: '$category', total: { $sum: '$amount' } } },
   ]);
   return Object.fromEntries(rows.map((r) => [r._id, r.total]));
@@ -322,8 +351,12 @@ export async function computeHealthScore(options?: { month?: string | null }): P
   const expense = totals.find((r) => r._id === 'debit')?.total ?? 0;
   const savingsRate = income > 0 ? Math.max(0, (income - expense) / income) : 0;
 
-  // Per-category actuals for the CURRENT month → budget adherence check.
-  const spentThisMonth = await spendByCategorySince(monthStart);
+  // Per-category actuals inside the selected month → budget adherence check.
+  // Bounded when a specific month is picked so August budgets aren't compared
+  // to September-plus totals.
+  const spentThisMonth = monthRange
+    ? await spendByCategoryBetween(monthRange.start, monthRange.end)
+    : await spendByCategorySince(monthStart);
   const budgetsTotal = monthBudgets.length;
   const budgetsMet = monthBudgets.filter(
     (b) => (spentThisMonth[b.category] ?? 0) <= b.monthlyLimit,
@@ -441,6 +474,20 @@ const RECS_TTL_MS = 10 * 60 * 1000;
 const globalForRecs = globalThis as unknown as { _recCache?: Map<string, RecEntry> };
 const recCache = globalForRecs._recCache ?? new Map<string, RecEntry>();
 globalForRecs._recCache = recCache;
+
+/**
+ * Distinct YYYY-MM values the current user has at least one transaction in,
+ * newest month first. Populates the month-selector dropdown.
+ */
+export async function listAvailableMonths(): Promise<string[]> {
+  const userId = await requireUser();
+  const rows = await Transaction.aggregate<{ _id: string }>([
+    { $match: { userId } },
+    { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$date' } } } },
+    { $sort: { _id: -1 } },
+  ]);
+  return rows.map((r) => r._id);
+}
 
 export async function generateAiRecommendations(month?: string | null): Promise<string[]> {
   const userId = String(await requireUser());

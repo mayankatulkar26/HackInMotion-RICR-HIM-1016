@@ -66,28 +66,79 @@ export function parseDate(input: string): Date | null {
  * Bank statements use "Withdrawal Amt", "Withdrawal Amt.", "Debit Amount"
  * etc., so a plain equality check misses too many real-world files.
  *
- * When `excludeAmbiguous` is set, headers mentioning both "credit" and
- * "debit" (e.g. PhonePe's "Credit/debit instrument") are skipped — those
- * are descriptor columns, not amount columns.
+ * `excludeAmbiguous` skips columns mentioning both "credit" AND "debit"
+ * (e.g. PhonePe's "Credit/debit instrument") — those are descriptor columns.
+ * It also skips balance/date-ish columns that would silently pollute an
+ * amount lookup (a "Value Dt" column would get picked as amount otherwise).
+ *
+ * `exactOnly` disables the partial match — used for very generic keys like
+ * "value" which would otherwise steal "Value Date".
  */
 function findHeader(
   headers: string[],
   key: string,
-  opts?: { excludeAmbiguous?: boolean },
+  opts?: { excludeAmbiguous?: boolean; exactOnly?: boolean },
 ): string | null {
   const norm = (s: string) => s.toLowerCase().trim().replace(/[.\s]+/g, ' ');
   const target = norm(key);
   const idx = headers.findIndex((h) => norm(h) === target);
   if (idx >= 0) return headers[idx];
+  if (opts?.exactOnly) return null;
   const partial = headers.findIndex((h) => {
     const n = norm(h);
     if (!n.includes(target)) return false;
-    if (opts?.excludeAmbiguous && n.includes('credit') && n.includes('debit')) {
-      return false;
+    if (opts?.excludeAmbiguous) {
+      // Descriptor columns naming both sides at once
+      if (n.includes('credit') && n.includes('debit')) return false;
+      // Date-ish columns ("Value Dt", "Txn Date") — never actually amounts
+      if (/\b(date|dt)\b/.test(n)) return false;
+      // Balance / running total columns
+      if (n.includes('balance')) return false;
     }
     return true;
   });
   return partial >= 0 ? headers[partial] : null;
+}
+
+/**
+ * Extract a signed rupee value from any cell string.
+ *
+ * Handles: leading currency prefixes (₹, Rs., INR), thousands separators,
+ * trailing DR/CR markers, accounting-negative parentheses `(1,003.50)`,
+ * and stray non-numeric text ("1,003.50 refund"). Returns null when there's
+ * no plausible number in the cell.
+ *
+ * The critical difference from `parseFloat(cell.replace(/[,₹\s]/g,''))`:
+ * that older approach would parse `"57 refund from ₹1,003.50"` as 57 because
+ * parseFloat stops at the first non-numeric run — this picks the
+ * largest-magnitude candidate instead, which is what a bank row's amount
+ * always is.
+ */
+export function parseAmount(input: unknown): number | null {
+  if (input === null || input === undefined) return null;
+  const raw = String(input).trim();
+  if (!raw) return null;
+
+  // Accounting parentheses = negative
+  const wrappedInParens = /^\((.+)\)\s*(?:dr|cr)?\s*$/i.exec(raw);
+  const body = wrappedInParens ? wrappedInParens[1] : raw;
+
+  // Every numeric token (may include thousands commas and one decimal group)
+  const matches = body.match(/-?\d[\d,]*(?:\.\d+)?/g);
+  if (!matches || matches.length === 0) return null;
+
+  // Pick the token with the largest absolute value — for a bank cell like
+  // "₹1,003.50 (Dr) - Bal ₹57,000" this picks 1003.50, not 57000 or 50.
+  // We give a very slight tie-break to the first number so a clean "1003.50"
+  // still wins over its own subparts.
+  let best: number | null = null;
+  for (const tok of matches) {
+    const n = parseFloat(tok.replace(/,/g, ''));
+    if (isNaN(n)) continue;
+    if (best === null || Math.abs(n) > Math.abs(best)) best = n;
+  }
+  if (best === null) return null;
+  return wrappedInParens ? -Math.abs(best) : best;
 }
 
 /** True if the row *looks* like a header row for a bank statement. */
@@ -127,22 +178,28 @@ export function normalizeRecords(
     findHeader(headers, 'narration') ??
     findHeader(headers, 'particulars') ??
     findHeader(headers, 'details');
-  const amountH = findHeader(headers, 'amount') ?? findHeader(headers, 'value');
+  // 'value' as an alias for amount is exact-only — a fuzzy match would grab
+  // "Value Date" / "Value Dt" columns, which are dates, and parseFloat on
+  // "10/08/2026" would return 10 as the "amount".
+  const amountH =
+    findHeader(headers, 'amount', { excludeAmbiguous: true }) ??
+    findHeader(headers, 'txn amount', { excludeAmbiguous: true }) ??
+    findHeader(headers, 'transaction amount', { excludeAmbiguous: true }) ??
+    findHeader(headers, 'value', { exactOnly: true });
   // Indian bank statements often use "Withdrawal Amt" / "Deposit Amt"
   // (or "Withdrawal (Dr)" / "Deposit (Cr)") instead of "debit" / "credit".
-  // excludeAmbiguous skips descriptor columns like "Credit/debit instrument".
   const debitH =
-    findHeader(headers, 'withdrawal') ??
-    findHeader(headers, 'withdrawal amt') ??
-    findHeader(headers, 'withdrawal amount') ??
+    findHeader(headers, 'withdrawal', { excludeAmbiguous: true }) ??
+    findHeader(headers, 'withdrawal amt', { excludeAmbiguous: true }) ??
+    findHeader(headers, 'withdrawal amount', { excludeAmbiguous: true }) ??
     findHeader(headers, 'debit', { excludeAmbiguous: true }) ??
-    findHeader(headers, 'debit amount');
+    findHeader(headers, 'debit amount', { excludeAmbiguous: true });
   const creditH =
-    findHeader(headers, 'deposit') ??
-    findHeader(headers, 'deposit amt') ??
-    findHeader(headers, 'deposit amount') ??
+    findHeader(headers, 'deposit', { excludeAmbiguous: true }) ??
+    findHeader(headers, 'deposit amt', { excludeAmbiguous: true }) ??
+    findHeader(headers, 'deposit amount', { excludeAmbiguous: true }) ??
     findHeader(headers, 'credit', { excludeAmbiguous: true }) ??
-    findHeader(headers, 'credit amount');
+    findHeader(headers, 'credit amount', { excludeAmbiguous: true });
   const typeH = findHeader(headers, 'type') ?? findHeader(headers, 'dr/cr');
 
   return records.map((raw, i) => {
@@ -163,19 +220,18 @@ export function normalizeRecords(
     let amount: number | null = null;
     let type: 'debit' | 'credit' = 'debit';
 
-    const dv = debitH ? String(raw[debitH] ?? '').replace(/[,₹\s]/g, '') : '';
-    const cv = creditH ? String(raw[creditH] ?? '').replace(/[,₹\s]/g, '') : '';
+    const dv = debitH ? parseAmount(raw[debitH]) : null;
+    const cv = creditH ? parseAmount(raw[creditH]) : null;
 
-    if (dv && parseFloat(dv) > 0) {
-      amount = parseFloat(dv);
+    if (dv !== null && dv > 0) {
+      amount = dv;
       type = 'debit';
-    } else if (cv && parseFloat(cv) > 0) {
-      amount = parseFloat(cv);
+    } else if (cv !== null && cv > 0) {
+      amount = cv;
       type = 'credit';
     } else if (amountH && raw[amountH]) {
-      const cleaned = String(raw[amountH]).replace(/[,₹\s]/g, '');
-      const n = parseFloat(cleaned);
-      if (!isNaN(n)) {
+      const n = parseAmount(raw[amountH]);
+      if (n !== null) {
         amount = Math.abs(n);
         if (typeH && raw[typeH]) {
           const t = String(raw[typeH]).toLowerCase().trim();
