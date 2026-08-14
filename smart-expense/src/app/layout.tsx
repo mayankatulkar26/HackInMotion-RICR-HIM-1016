@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Toaster
             richColors
             theme="dark"
-            position="top-right"
+            position="top-center"
             toastOptions={{
               className: 'font-sans',
               duration: 2500,
