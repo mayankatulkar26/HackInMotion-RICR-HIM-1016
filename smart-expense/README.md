@@ -1,146 +1,487 @@
-# Wealth Sight — Financial Health Dashboard
+# Wealth Sight 💰
 
-AI-powered personal finance web app for Hack In Motion (FinTech theme). Upload a bank statement, get auto-categorized transactions, a financial health score, and personalized recommendations.
+### AI-Powered Personal Finance & Financial Health Dashboard
 
-**Status:** Day 1 complete — auth, DB, transactions (manual + CSV), rule-based + Gemini categorization, budgets, goals, dashboard shell. Day 2 layers on real charts, health-score formula, AI insights, and chat.
+Wealth Sight is a smart finance management web application built for the **Hack In Motion – FinTech** challenge.
 
-## Quick start
+The idea is simple: instead of manually checking every transaction and trying to understand where your money goes, Wealth Sight brings everything into one dashboard.
+
+You can add your transactions, upload statement files, track spending, manage budgets and savings goals, and use AI-powered insights to better understand your financial habits.
+
+---
+
+## 🚀 What Wealth Sight Does
+
+Wealth Sight helps users:
+
+* 📊 View their overall financial health
+* 💳 Track income and expenses
+* 📁 Import transaction data from files
+* 🏷️ Categorize transactions automatically
+* 💰 Create and track budgets
+* 🎯 Set savings goals
+* 📈 Understand spending patterns
+* 🤖 Get AI-powered financial insights
+* 💬 Interact with an AI finance assistant
+* 🔐 Secure their account with authentication
+
+The dashboard is designed to make personal finance easier to understand instead of showing users a lot of confusing numbers.
+
+---
+
+## ✨ Main Features
+
+### 🔐 Authentication
+
+Users can create an account and securely log in.
+
+* Login / Signup
+* Password protection
+* NextAuth authentication
+* Protected dashboard routes
+
+---
+
+### 📊 Financial Dashboard
+
+The main dashboard gives a quick overview of your money.
+
+It includes:
+
+* Income
+* Expenses
+* Balance
+* Spending overview
+* Recent transactions
+* Financial health information
+* Month-based filtering
+
+The dashboard also updates based on the selected time period.
+
+---
+
+### 💳 Transaction Management
+
+Users can manage their transactions directly from the application.
+
+Supported operations include:
+
+* Add transactions manually
+* View transactions
+* Search transactions
+* Filter transactions
+* Categorize transactions
+* Track income and expenses
+
+---
+
+### 📂 Transaction Import
+
+Instead of entering everything manually, users can import transaction data from files.
+
+The project includes support for processing:
+
+* CSV files
+* Excel/XLSX data
+* Financial statement data
+
+This makes it easier to move existing banking data into Wealth Sight.
+
+---
+
+### 🤖 AI Transaction Categorization
+
+Wealth Sight uses a hybrid approach for transaction categorization.
+
+First, known transaction patterns and merchant names are checked.
+
+If the transaction cannot be confidently categorized, AI can be used to classify it.
+
+The project supports:
+
+* Google Gemini
+* Groq as an AI fallback
+
+This allows the application to continue working even when one AI provider is unavailable.
+
+---
+
+### 💡 AI Financial Insights
+
+The application can use transaction data to generate useful financial insights.
+
+Examples include:
+
+* Spending patterns
+* Unusual spending
+* High-spending categories
+* Financial behavior
+* Personalized suggestions
+
+The goal is not just to show data, but to explain what the data means.
+
+---
+
+### 💬 AI Finance Assistant
+
+Wealth Sight also includes an AI chat experience designed around personal finance.
+
+Users can ask questions about their spending and financial data and get AI-generated responses.
+
+For example:
+
+> "Where am I spending the most?"
+
+> "How can I reduce my monthly expenses?"
+
+> "How much should I save?"
+
+---
+
+### 💰 Budget Management
+
+Users can create budgets for different spending categories.
+
+The dashboard helps track progress using visual indicators so users can quickly see whether they are within their planned spending limits.
+
+---
+
+### 🎯 Savings Goals
+
+Users can create savings goals and monitor their progress.
+
+For example:
+
+* New phone
+* Laptop
+* Emergency fund
+* Travel
+* Personal goals
+
+Each goal can be tracked over time.
+
+---
+
+## 🧠 How The AI System Works
+
+The application follows a simple fallback strategy:
+
+```text
+Transaction
+     ↓
+Rule / Merchant Detection
+     ↓
+Known Category?
+   ↙        ↘
+ Yes         No
+ ↓            ↓
+Category    Gemini AI
+              ↓
+          If Gemini fails
+              ↓
+          Groq Fallback
+              ↓
+            Result
+```
+
+This approach helps reduce unnecessary AI requests while still allowing the system to handle unfamiliar transactions.
+
+---
+
+## 🛠️ Tech Stack
+
+| Technology      | Purpose                  |
+| --------------- | ------------------------ |
+| Next.js 15      | Full-stack web framework |
+| React           | Frontend UI              |
+| TypeScript      | Type safety              |
+| Tailwind CSS    | Styling                  |
+| MongoDB         | Database                 |
+| Mongoose        | MongoDB object modeling  |
+| NextAuth        | Authentication           |
+| Google Gemini   | AI features              |
+| Groq            | AI fallback              |
+| Recharts        | Data visualization       |
+| Framer Motion   | UI animations            |
+| Radix UI        | UI primitives            |
+| React Hook Form | Forms                    |
+| Zod             | Validation               |
+| PapaParse       | CSV processing           |
+| XLSX            | Excel file processing    |
+| Nodemailer      | Email functionality      |
+
+The repository's current dependency setup confirms the main framework, database, AI, charting, file-processing, authentication and UI libraries listed above.
+
+---
+
+## 📁 Project Structure
+
+```text
+smart-expense/
+│
+├── src/
+│   ├── app/
+│   │   ├── (auth)/
+│   │   │   ├── login/
+│   │   │   └── signup/
+│   │   │
+│   │   ├── (dashboard)/
+│   │   │   ├── dashboard/
+│   │   │   ├── transactions/
+│   │   │   ├── budgets/
+│   │   │   ├── insights/
+│   │   │   └── chat/
+│   │   │
+│   │   └── api/
+│   │
+│   ├── actions/
+│   │   ├── dashboard.ts
+│   │   ├── transactions.ts
+│   │   ├── budgets.ts
+│   │   └── ...
+│   │
+│   ├── components/
+│   │   ├── auth/
+│   │   ├── dashboard/
+│   │   ├── transactions/
+│   │   ├── budgets/
+│   │   ├── charts/
+│   │   └── ui/
+│   │
+│   ├── db/
+│   │
+│   └── lib/
+│
+├── public/
+├── scripts/
+├── package.json
+├── .env.example
+└── README.md
+```
+
+The repository currently includes dashboard server actions and dedicated dashboard/transaction components, matching this application structure.
+
+---
+
+## ⚙️ Getting Started
+
+### 1. Clone the repository
 
 ```bash
-cd smart-expense
+git clone https://github.com/mayankatulkar26/HackInMotion-RICR-HIM-1016.git
+```
+
+### 2. Enter the project
+
+```bash
+cd HackInMotion-RICR-HIM-1016/smart-expense
+```
+
+### 3. Install dependencies
+
+```bash
 npm install
-cp .env.example .env
-# generate an auth secret:
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-# paste into AUTH_SECRET in .env
 ```
 
-Initialize the local database (creates `local.db` in the project root):
+### 4. Create environment variables
 
-```bash
-npm run db:push
+Create a `.env.local` file and add the required values.
+
+Example:
+
+```env
+MONGODB_URI=your_mongodb_connection_string
+DATABASE_URL=your_database_url
+
+AUTH_SECRET=your_secret_key
+AUTH_URL=http://localhost:3000
+
+NEXTAUTH_SECRET=your_secret_key
+NEXTAUTH_URL=http://localhost:3000
+
+GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
+
+EMAIL_USER=your_email
+EMAIL_PASSWORD=your_app_password
 ```
 
-Optional — seed a demo user with 14 realistic transactions and 4 budgets:
+The repository's `.env.example` currently defines MongoDB, email, NextAuth, Gemini and Groq configuration variables.
 
-```bash
-npm run db:seed
-# then log in with demo@smartexpense.dev / demo1234
-```
+---
 
-Run the dev server:
+### 5. Start the development server
 
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000
+Open:
 
-## Environment variables
-
-| Var | Required | Notes |
-|-----|----------|-------|
-| `AUTH_SECRET` | ✅ | any random string (32+ bytes). |
-| `AUTH_URL` | dev only | usually `http://localhost:3000` |
-| `DATABASE_URL` | ✅ | defaults to `file:./local.db`. For prod, use a Turso URL (`libsql://…`). |
-| `DATABASE_AUTH_TOKEN` | prod only | Turso token. |
-| `GEMINI_API_KEY` | optional | free at https://aistudio.google.com/apikey — categorization falls back to rules if absent. |
-
-## Categorization approach — hybrid, in that order
-
-1. **Rule-based** (`src/lib/categorizer.ts`) — 60+ keyword patterns for Indian merchants (Swiggy, Zomato, BigBasket, Netflix, Uber, Ola, Amazon, BSES, Airtel, Zerodha, PVR, Apollo, and more) grouped into 12 categories. Runs instantly, zero cost, handles ~80% of typical statements.
-2. **Merchant cache** — for anything the rules miss, we check a per-merchant cache in the DB first so the same shop never hits the Gemini API twice.
-3. **Gemini** (`src/lib/gemini.ts`) — remaining descriptions are batched in groups of 20 into a single `gemini-1.5-flash` call. On failure (no key, quota, network), transactions gracefully stay as "Uncategorized" — the import never breaks.
-
-## Tech stack
-
-| Layer | Choice |
-|-------|--------|
-| Framework | Next.js 15 (App Router + Server Actions) |
-| Auth | NextAuth v5 (credentials + bcrypt) |
-| DB | SQLite via libsql / Turso |
-| ORM | Drizzle |
-| AI | Google Gemini `gemini-1.5-flash` |
-| UI | Tailwind + shadcn-style Radix primitives |
-| Animation | framer-motion |
-| Charts | Recharts (arriving Day 2) |
-| CSV | papaparse |
-
-### Why libsql instead of MySQL?
-
-The plan called for MySQL. We use libsql (SQLite protocol) because:
-- **Zero setup for local dev** — a file is created on first run.
-- **Vercel-compatible for prod** — Turso is a free-tier libsql host that works serverlessly (MySQL on Vercel needs a paid connection pool).
-- **Same Drizzle schema** — swap to MySQL by changing `drizzle-orm/libsql` → `drizzle-orm/mysql2` and the schema `sqliteTable` → `mysqlTable`. Everything else stays.
-
-## Project structure
-
-```
-src/
-├── app/
-│   ├── (auth)/{login,signup}       — animated split-screen auth pages
-│   ├── (dashboard)/
-│   │   ├── dashboard               — overview, KPIs, health gauge
-│   │   ├── transactions            — manual + CSV + list
-│   │   ├── budgets                 — monthly limits + savings goals
-│   │   ├── insights                — Day 2
-│   │   └── chat                    — Day 2
-│   └── api/auth/[...nextauth]      — NextAuth handler
-├── actions/                        — server actions (transactions, budgets, auth)
-├── components/
-│   ├── ui/                         — Button, Card, Dialog, Select, … (shadcn-style)
-│   ├── auth/                       — login/signup forms
-│   ├── charts/                     — HealthGauge (canvas-free SVG, animated)
-│   ├── dashboard/                  — KPI, EmptyState, RecentTransactions
-│   ├── transactions/               — manual form, CSV uploader w/ preview, table
-│   └── budgets/                    — budget & goal forms + lists
-├── db/                             — Drizzle schema + connection + seed
-└── lib/
-    ├── auth.ts                     — NextAuth config
-    ├── categories.ts               — 15 categories + visual tokens
-    ├── categorizer.ts              — rule-based classifier
-    ├── gemini.ts                   — Gemini wrapper (categorize / recommend / chat)
-    ├── csv.ts                      — Papa parse + date normalization + dedupe hash
-    └── utils.ts                    — cn(), formatCurrency, monthKey
+```text
+http://localhost:3000
 ```
 
-## What's in Day 1
+---
 
-- [x] Next.js 15 + Drizzle + libsql setup
-- [x] Full schema (users, accounts, transactions, budgets, goals, snapshots, merchant cache)
-- [x] NextAuth v5 with credentials + bcrypt password hashing
-- [x] Middleware protecting all routes except /, /login, /signup
-- [x] Server actions: transaction CRUD, CSV import with dedupe + rule/AI cascade
-- [x] CSV parsing with 3 date-format detection, negative-amount handling, missing-field defaults, and a preview step before import
-- [x] Rule-based categorizer (60+ keywords, 12 categories)
-- [x] Gemini integration (batched, cached, graceful fallback)
-- [x] Budget & savings goal CRUD server actions
-- [x] Landing page with aurora background, animated hero, feature grid
-- [x] Split-screen login/signup with password toggle
-- [x] Dashboard shell (sidebar with animated active state, topbar, empty states)
-- [x] Transactions page with tabbed manual/CSV, filtered/searchable table
-- [x] Budgets page with color-coded progress bars (green / yellow / red)
-- [x] Savings goals with live progress
-- [x] Recent transactions list with per-category color tokens
-- [x] Animated health-score gauge (SVG, count-up)
+## 🔑 AI API Keys
 
-## What's in Day 2
+Wealth Sight supports two AI providers.
 
-- [ ] Financial health score formula (savings + budget adherence + stability + subscription ratio + emergency fund)
-- [ ] Spending pattern queries (top categories, MoM comparison, spike detection)
-- [ ] Subscription detector (recurring merchant + similar amount pattern)
-- [ ] Recharts: pie / line / bar for the dashboard
-- [ ] AI recommendations panel
-- [ ] AI chat grounded in user data
-- [ ] Vercel deploy + Turso setup
-- [ ] Architecture diagram + presentation deck
+### Google Gemini
 
-## Sample CSV
+Get a Gemini API key from:
 
-`sample-transactions.csv` (42 rows, Indian merchants, mixed months) — upload via Transactions → CSV upload for an instant realistic dataset.
+```text
+https://aistudio.google.com/apikey
+```
 
-## Notes on scope decisions
+### Groq
 
-- **Bonus challenges kept:** subscription detector + AI chat + savings simulation slider (Day 2).
-- **Bonus challenges skipped:** bill reminder, multi-account UI, comparison/benchmarking.
-- **No email verification / OAuth on Day 1** — credentials only, per plan's Day-1 checklist.
+Get a Groq API key from:
+
+```text
+https://console.groq.com/keys
+```
+
+Gemini is intended to be the preferred provider while Groq can act as a fallback.
+
+---
+
+## 🗄️ Database
+
+The current application uses **MongoDB** with **Mongoose**.
+
+Example:
+
+```env
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/smart-expense
+```
+
+You can use MongoDB Atlas for a cloud database.
+
+---
+
+## 📈 Application Flow
+
+```text
+User
+ │
+ ▼
+Login / Signup
+ │
+ ▼
+Dashboard
+ │
+ ├── Transactions
+ │      ├── Manual Entry
+ │      ├── CSV / Excel Import
+ │      └── Categorization
+ │
+ ├── Budgets
+ │
+ ├── Savings Goals
+ │
+ ├── Financial Insights
+ │
+ └── AI Chat
+        │
+        ▼
+   Gemini / Groq
+        │
+        ▼
+   Personalized Response
+```
+
+---
+
+## 🎯 Problem We Are Solving
+
+Managing personal finances can become difficult when users have many transactions spread across different bank accounts or statements.
+
+Most people can see their transactions, but they don't always understand:
+
+* Where their money is going
+* Which categories consume the most money
+* Whether they are overspending
+* How much they should save
+* What financial habits they should change
+
+Wealth Sight tries to solve this by combining **transaction management + analytics + AI** in one place.
+
+---
+
+## 💡 Why Wealth Sight?
+
+Instead of being only an expense tracker, Wealth Sight focuses on the bigger picture.
+
+```text
+Raw Financial Data
+        ↓
+Organized Transactions
+        ↓
+Spending Analysis
+        ↓
+Financial Health
+        ↓
+AI Insights
+        ↓
+Better Financial Decisions
+```
+
+The objective is to turn financial data into something a normal user can actually understand and use.
+
+---
+
+## 🏆 Hackathon
+
+Built for:
+
+**Hack In Motion – RICR**
+
+Theme:
+
+**FinTech**
+
+Project:
+
+**Wealth Sight**
+
+---
+
+## 🚧 Future Improvements
+
+Some improvements that can be added later:
+
+* Bank API integration
+* Automatic recurring-payment detection
+* Better financial forecasting
+* Emergency fund planning
+* Investment tracking
+* Multi-account support
+* Bill reminders
+* Financial benchmarking
+* Smarter AI recommendations
+* Mobile application
+
+---
+
+## 👨‍💻 Team / Project
+
+Built as a hackathon project with the goal of making personal finance easier, smarter and more understandable.
+
+🚀 **Deployed Website:**  
+https://hackinmotion-ricr-him-1016.onrender.com/
+
+Try Wealth Sight live without running the project locally.
+**Repository:**
+https://github.com/mayankatulkar26/HackInMotion-RICR-HIM-1016
+
+**Project Folder:**
+`smart-expense`
+
+---
+
+## 📄 License
+
+This project is created for educational and hackathon purposes.
