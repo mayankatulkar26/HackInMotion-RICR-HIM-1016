@@ -11,19 +11,55 @@ const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 
 /**
- * Call Gemini with one automatic retry for transient failures (503 overloaded,
- * 429 rate-limited). Waits ~1.2s before the second attempt. Any other error
- * bubbles up to the caller's own catch block.
+ * Gemini's 429 quota error is not transient for the free tier. Retry once for
+ * overloaded responses, but stop immediately when the API says the quota was
+ * exhausted so the app can surface a clear explanation instead of wasting the
+ * user's remaining requests.
  */
+export function isGeminiQuotaExceededError(err: any): boolean {
+  if (!err) return false;
+
+  const status = err?.status ?? err?.response?.status ?? err?.cause?.status;
+  const detailText = JSON.stringify(err?.errorDetails ?? err?.error ?? err?.cause ?? {})
+    .toLowerCase();
+  const messageText = [
+    err?.message,
+    err?.error?.message,
+    err?.cause?.message,
+    err?.response?.data?.error?.message,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const quotaMatch =
+    status === 429 ||
+    detailText.includes('quota') ||
+    detailText.includes('quotafailure') ||
+    messageText.includes('quota') ||
+    messageText.includes('rate limit') ||
+    messageText.includes('exceeded your current quota');
+
+  return quotaMatch;
+}
+
 async function callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (err: any) {
-    const status = err?.status ?? err?.response?.status;
+    const status = err?.status ?? err?.response?.status ?? err?.cause?.status;
+
+    if (isGeminiQuotaExceededError(err)) {
+      throw new Error(
+        'Gemini API quota exceeded. Please wait a bit and try again, or upgrade your Gemini billing plan.',
+      );
+    }
+
     if (status === 503 || status === 429) {
       await new Promise((r) => setTimeout(r, 1200));
       return fn();
     }
+
     throw err;
   }
 }
@@ -138,6 +174,11 @@ QUESTION: ${question}`;
     return res.response.text().trim();
   } catch (err) {
     console.error('[gemini] chat failed:', err);
+
+    if (isGeminiQuotaExceededError(err)) {
+      return 'AI chat is temporarily unavailable because the Gemini free-tier quota has been reached. Please try again later or upgrade your Gemini plan.';
+    }
+
     return 'Sorry, I could not answer that right now. Please try again.';
   }
 }

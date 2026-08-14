@@ -1,9 +1,6 @@
 import mongoose from 'mongoose';
 
 const uri = process.env.DATABASE_URL;
-if (!uri) {
-  throw new Error('DATABASE_URL is not set — configure it in .env');
-}
 
 /**
  * Global cache — Next.js hot-reload creates a new module context on every
@@ -16,9 +13,13 @@ const cached: Cache = globalForMongoose._mongoose ?? { conn: null, promise: null
 globalForMongoose._mongoose = cached;
 
 export async function connectDb(): Promise<typeof mongoose> {
+  if (!uri) {
+    throw new Error('DATABASE_URL is not set — configure it in .env or your deployment environment');
+  }
+
   if (cached.conn) return cached.conn;
   if (!cached.promise) {
-    cached.promise = mongoose.connect(uri!, {
+    cached.promise = mongoose.connect(uri, {
       bufferCommands: false,
       serverSelectionTimeoutMS: 10_000,
     });
