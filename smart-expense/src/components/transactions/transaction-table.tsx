@@ -107,18 +107,18 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[180px]">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[0] sm:min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search descriptions…"
-            className="pl-9"
+            placeholder="Search…"
+            className="pl-9 text-xs sm:text-sm"
           />
         </div>
         <Select value={cat} onValueChange={setCat}>
-          <SelectTrigger className="w-[170px]">
+          <SelectTrigger className="w-full sm:w-[130px] md:w-[170px] text-xs sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -131,7 +131,7 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
           </SelectContent>
         </Select>
         <Select value={year} onValueChange={setYear}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[110px] md:w-[150px] text-xs sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -144,7 +144,7 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
           </SelectContent>
         </Select>
         <Select value={month} onValueChange={handleMonthChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[140px] md:w-[180px] text-xs sm:text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -158,24 +158,24 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
         </Select>
       </div>
 
-      <div className="rounded-xl border border-border/70 overflow-hidden">
+      <div className="rounded-xl border border-border/70 overflow-x-auto">
         <div className="max-h-[540px] overflow-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs sm:text-sm">
             <thead className="bg-secondary/40 sticky top-0 backdrop-blur">
               <tr>
-                <th className="text-left px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-left px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Date
                 </th>
-                <th className="text-left px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-left px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Description
                 </th>
-                <th className="text-left px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-left px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Category
                 </th>
-                <th className="text-right px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-right px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Amount
                 </th>
-                <th className="w-8"></th>
+                <th className="w-8 px-1"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -187,32 +187,32 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
                     key={r.id}
                     className="group hover:bg-secondary/40 transition-colors"
                   >
-                    <td className="px-3 py-2 text-xs whitespace-nowrap">
-                      {format(new Date(r.date), 'd MMM yyyy')}
+                    <td className="px-2 sm:px-3 py-2 text-xs whitespace-nowrap">
+                      {format(new Date(r.date), 'd MMM')}
                     </td>
-                    <td className="px-3 py-2 max-w-[280px] truncate">{r.description}</td>
-                    <td className="px-3 py-2">
+                    <td className="px-2 sm:px-3 py-2 max-w-[100px] sm:max-w-[200px] md:max-w-[280px] truncate text-xs sm:text-sm">{r.description}</td>
+                    <td className="px-2 sm:px-3 py-2 text-xs sm:text-sm">
                       <span
-                        className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs"
+                        className="inline-flex items-center gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-xs"
                         style={{ background: `${color}18`, color }}
                       >
                         <span
-                          className="h-1.5 w-1.5 rounded-full"
+                          className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full"
                           style={{ background: color }}
                         />
-                        {r.category}
+                        <span className="hidden sm:inline">{r.category}</span>
                       </span>
                     </td>
                     <td
                       className={cn(
-                        'px-3 py-2 text-right num font-medium whitespace-nowrap',
+                        'px-2 sm:px-3 py-2 text-right text-xs sm:text-sm font-medium whitespace-nowrap',
                         isCredit ? 'text-success' : 'text-destructive',
                       )}
                     >
                       {isCredit ? '+' : '−'}
                       {formatCurrency(r.amount)}
                     </td>
-                    <td className="px-2">
+                    <td className="px-1">
                       <Button
                         size="icon"
                         variant="ghost"
@@ -220,9 +220,9 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
                         disabled={pending}
                         aria-label="Delete transaction"
                         title="Delete transaction"
-                        className="h-8 w-8 text-muted-foreground/70 opacity-70 hover:opacity-100 hover:text-destructive group-hover:opacity-100 transition-opacity"
+                        className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground/70 opacity-70 hover:opacity-100 hover:text-destructive group-hover:opacity-100 transition-opacity"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </td>
                   </tr>

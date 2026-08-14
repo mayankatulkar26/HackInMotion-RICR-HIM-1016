@@ -56,10 +56,10 @@ export function TransactionForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 mt-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="amount">Amount (₹)</Label>
+    <form onSubmit={onSubmit} className="space-y-3 sm:space-y-4 mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+        <div className="space-y-1.5 sm:space-y-2">
+          <Label htmlFor="amount" className="text-xs sm:text-sm">Amount (₹)</Label>
           <Input
             id="amount"
             name="amount"
@@ -67,48 +67,51 @@ export function TransactionForm() {
             inputMode="decimal"
             step="0.01"
             placeholder="500"
+            className="text-xs sm:text-sm"
             required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="date">Date</Label>
+        <div className="space-y-1.5 sm:space-y-2">
+          <Label htmlFor="date" className="text-xs sm:text-sm">Date</Label>
           <Input
             id="date"
             name="date"
             type="date"
             defaultValue={new Date().toISOString().slice(0, 10)}
+            className="text-xs sm:text-sm"
             required
           />
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
+      <div className="space-y-1.5 sm:space-y-2">
+        <Label htmlFor="description" className="text-xs sm:text-sm">Description</Label>
         <Input
           id="description"
           name="description"
-          placeholder="e.g. Swiggy - Dinner order"
+          placeholder="e.g. Swiggy - Dinner"
+          className="text-xs sm:text-sm"
           required
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label>Type</Label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+        <div className="space-y-1.5 sm:space-y-2">
+          <Label className="text-xs sm:text-sm">Type</Label>
           <Select value={type} onValueChange={(v) => setType(v as any)}>
-            <SelectTrigger>
+            <SelectTrigger className="text-xs sm:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="debit">Expense (debit)</SelectItem>
-              <SelectItem value="credit">Income (credit)</SelectItem>
+              <SelectItem value="debit">Expense</SelectItem>
+              <SelectItem value="credit">Income</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Category (optional)</Label>
+        <div className="space-y-1.5 sm:space-y-2">
+          <Label className="text-xs sm:text-sm">Category</Label>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger>
+            <SelectTrigger className="text-xs sm:text-sm">
               <SelectValue placeholder="Auto-detect" />
             </SelectTrigger>
             <SelectContent>
@@ -122,14 +125,14 @@ export function TransactionForm() {
         </div>
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full text-xs sm:text-sm" disabled={pending}>
         {pending ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" /> Adding…
+            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> Adding…
           </>
         ) : (
           <>
-            <PlusCircle className="h-4 w-4" /> Add transaction
+            <PlusCircle className="h-3 w-3 sm:h-4 sm:w-4" /> Add transaction
           </>
         )}
       </Button>

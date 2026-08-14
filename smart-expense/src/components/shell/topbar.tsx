@@ -89,22 +89,31 @@ export function Topbar({ user, goals = [] }: Props) {
   return (
     <>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border/60 bg-background/70 backdrop-blur px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3 lg:hidden">
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">Wealth Sight</p>
+        <div className="flex flex-col gap-1 lg:hidden">
+          <div className="flex items-center gap-3">
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen((v) => !v)}
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">Wealth Sight</p>
+            </div>
+          </div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-foreground/90 pl-12 -mt-1">
+            <span className="text-foreground">Hello</span>
+            <span className="ml-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
+              {user.name ? `, ${user.name.split(' ')[0].toUpperCase()}` : ''}
+            </span>
+            <span className="ml-1">👋</span>
           </div>
         </div>
 
-        <div className="flex-1 min-w-0 text-left lg:flex-none lg:text-left">
+        <div className="hidden lg:flex flex-1 min-w-0 text-left">
           <div className="block text-base font-extrabold uppercase tracking-[0.08em] text-foreground/95 sm:text-lg lg:text-xl">
             <span className="text-foreground">Hello</span>
             <span className="ml-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
@@ -115,7 +124,7 @@ export function Topbar({ user, goals = [] }: Props) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <label className="theme-switch" aria-label="Toggle theme">
+          <label className="theme-switch origin-center scale-75 sm:scale-100" aria-label="Toggle theme">
             <input
               type="checkbox"
               className="theme-switch__checkbox"
@@ -173,51 +182,57 @@ export function Topbar({ user, goals = [] }: Props) {
       </header>
 
       {mobileOpen && (
-        <div className="border-b border-border/60 bg-card/95 backdrop-blur lg:hidden">
-          <nav className="space-y-1 p-3">
-            {NAV.map((item) => {
-              const active =
-                path === item.href ||
-                (item.href !== '/dashboard' && path.startsWith(item.href));
+        <>
+          <div
+            className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="fixed left-0 top-16 z-30 w-64 max-w-[80vw] border-r border-border/60 bg-card/95 backdrop-blur lg:hidden max-h-[calc(100vh-4rem)] overflow-y-auto">
+            <nav className="space-y-1 p-3">
+              {NAV.map((item) => {
+                const active =
+                  path === item.href ||
+                  (item.href !== '/dashboard' && path.startsWith(item.href));
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
-                    active
-                      ? 'bg-accent/12 text-foreground'
-                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-                  )}
-                >
-                  <item.icon
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
                     className={cn(
-                      'h-4 w-4 shrink-0',
-                      active ? 'text-accent' : 'text-muted-foreground',
+                      'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                      active
+                        ? 'bg-accent/12 text-foreground'
+                        : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
                     )}
-                  />
-                  <span>{item.label}</span>
-                  {active && (
-                    <div className="ml-auto h-2 w-2 rounded-full bg-accent" />
-                  )}
-                </Link>
-              );
-            })}
+                  >
+                    <item.icon
+                      className={cn(
+                        'h-4 w-4 shrink-0',
+                        active ? 'text-accent' : 'text-muted-foreground',
+                      )}
+                    />
+                    <span>{item.label}</span>
+                    {active && (
+                      <div className="ml-auto h-2 w-2 rounded-full bg-accent" />
+                    )}
+                  </Link>
+                );
+              })}
 
-            <div className="mt-3 rounded-xl border border-border/70 bg-gradient-to-br from-accent/10 to-transparent p-4">
-              <div className="flex items-center gap-2 text-xs font-medium text-accent">
-                <Wallet className="h-3.5 w-3.5" />
-                Wealth Sight
+              <div className="mt-3 rounded-xl border border-border/70 bg-gradient-to-br from-accent/10 to-transparent p-4">
+                <div className="flex items-center gap-2 text-xs font-medium text-accent">
+                  <Wallet className="h-3.5 w-3.5" />
+                  Wealth Sight
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                  Upload a CSV of your last 3 months to unlock spending trends and
+                  personalized recommendations.
+                </p>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                Upload a CSV of your last 3 months to unlock spending trends and
-                personalized recommendations.
-              </p>
-            </div>
-          </nav>
-        </div>
+            </nav>
+          </div>
+        </>
       )}
     </>
   );

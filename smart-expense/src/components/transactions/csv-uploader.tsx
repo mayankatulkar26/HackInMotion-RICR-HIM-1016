@@ -142,9 +142,9 @@ export function CsvUploader() {
 
   if (parsing && !rows) {
     return (
-      <div className="mt-4 grid place-items-center rounded-xl border-2 border-dashed border-accent/50 bg-secondary/30 p-10 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-        <p className="mt-3 text-sm font-medium">Reading your file…</p>
+      <div className="mt-4 grid place-items-center rounded-xl border-2 border-dashed border-accent/50 bg-secondary/30 p-6 sm:p-10 text-center">
+        <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-accent" />
+        <p className="mt-2 sm:mt-3 text-xs sm:text-sm font-medium">Reading your file…</p>
         <p className="text-xs text-muted-foreground mt-1">
           PDF extraction takes a few seconds
         </p>
@@ -163,19 +163,22 @@ export function CsvUploader() {
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           className={cn(
-            'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 text-center cursor-pointer transition-all',
+            'flex flex-col items-center justify-center gap-2 sm:gap-3 rounded-xl border-2 border-dashed p-6 sm:p-10 text-center cursor-pointer transition-all',
             dragOver
               ? 'border-accent bg-accent/5'
               : 'border-border/70 hover:border-accent/50 hover:bg-secondary/30',
           )}
         >
-          <div className="grid h-12 w-12 place-items-center rounded-lg bg-accent/10 text-accent">
-            <Upload className="h-6 w-6" />
+          <div className="grid h-10 w-10 sm:h-12 sm:w-12 place-items-center rounded-lg bg-accent/10 text-accent">
+            <Upload className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
           <div>
-            <p className="font-medium">Drop your statement here</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              or click to browse — accepts <b>CSV</b>, <b>Excel</b> (.xlsx / .xls) and <b>PDF</b>
+            <p className="text-xs sm:text-sm font-medium">Drop your statement here</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              or click to browse
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              CSV, Excel (.xlsx/.xls) and PDF
             </p>
           </div>
           <input
@@ -187,12 +190,10 @@ export function CsvUploader() {
           />
         </label>
 
-        <div className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
-          <FileSpreadsheet className="h-4 w-4 shrink-0 mt-0.5" />
+        <div className="mt-2 sm:mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+          <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 mt-0.5" />
           <p>
-            Handles messy data across formats: multiple date formats, negative amounts,
-            missing fields. PDFs are best-effort — scanned/image PDFs won&apos;t work.
-            You&apos;ll always see a preview before anything is saved.
+            Handles messy data: multiple date formats, negative amounts, missing fields. PDFs are best-effort. You'll see a preview before saving.
           </p>
         </div>
       </div>
@@ -204,12 +205,12 @@ export function CsvUploader() {
   const kindLabel = fileKind === 'excel' ? 'Excel' : fileKind === 'pdf' ? 'PDF' : 'CSV';
 
   return (
-    <div className="mt-4 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mt-4 space-y-3 sm:space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
             <p
-              className="text-sm font-medium truncate min-w-0"
+              className="text-xs sm:text-sm font-medium truncate min-w-0"
               title={fileName}
             >
               {fileName}
@@ -223,45 +224,46 @@ export function CsvUploader() {
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="ghost" size="sm" onClick={reset}>
+          <Button variant="ghost" size="sm" className="text-xs sm:text-sm" onClick={reset}>
             Cancel
           </Button>
           <Button
             size="sm"
+            className="text-xs sm:text-sm"
             onClick={onImport}
             disabled={pending || importable.length === 0}
           >
             {pending ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Importing…
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> Importing…
               </>
             ) : (
               <>
-                <CheckCircle2 className="h-4 w-4" /> Import {importable.length}
+                <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" /> Import {importable.length}
               </>
             )}
           </Button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-border/70 overflow-hidden">
+      <div className="rounded-xl border border-border/70 overflow-x-auto">
         <div className="max-h-[400px] overflow-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs sm:text-sm">
             <thead className="bg-secondary/40 sticky top-0 backdrop-blur">
               <tr>
-                <th className="text-left px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-left px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Date
                 </th>
-                <th className="text-left px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-left px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Description
                 </th>
-                <th className="text-right px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-right px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Amount
                 </th>
-                <th className="text-center px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-center px-1 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Type
                 </th>
-                <th className="text-left px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="text-left px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap hidden sm:table-cell">
                   Notes
                 </th>
               </tr>
@@ -275,35 +277,35 @@ export function CsvUploader() {
                     r.warnings.length > 0 && 'bg-warning/5',
                   )}
                 >
-                  <td className="px-3 py-2 text-xs">
-                    {r.date ? format(r.date, 'd MMM yyyy') : (
+                  <td className="px-2 sm:px-3 py-2 text-xs whitespace-nowrap">
+                    {r.date ? format(r.date, 'd MMM') : (
                       <span className="text-warning">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2">{r.description || <span className="text-warning">missing</span>}</td>
+                  <td className="px-2 sm:px-3 py-2 text-xs sm:text-sm max-w-[80px] sm:max-w-none truncate">{r.description || <span className="text-warning">missing</span>}</td>
                   <td
                     className={cn(
-                      'px-3 py-2 text-right num',
+                      'px-2 sm:px-3 py-2 text-right text-xs sm:text-sm font-mono',
                       r.type === 'debit' ? 'text-destructive' : 'text-success',
                     )}
                   >
                     {r.amount !== null ? (
-                      r.type === 'debit' ? '-' : ''
-                    ) + formatCurrency(Math.abs(r.amount)) : (
+                      (r.type === 'debit' ? '-' : '') + formatCurrency(Math.abs(r.amount)) 
+                    ) : (
                       <span className="text-warning">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-center">
-                    <Badge variant={r.type === 'credit' ? 'success' : 'default'}>
+                  <td className="px-1 sm:px-3 py-2 text-center">
+                    <Badge variant={r.type === 'credit' ? 'success' : 'default'} className="text-xs">
                       <span className={r.type === 'debit' ? 'text-destructive' : ''}>
-                        {r.type}
+                        {r.type.slice(0, 3)}
                       </span>
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="px-2 sm:px-3 py-2 text-xs hidden sm:table-cell">
                     {r.warnings.length > 0 ? (
                       <span className="inline-flex items-center gap-1 text-warning">
-                        <AlertTriangle className="h-3.5 w-3.5" />
+                        <AlertTriangle className="h-3 w-3" />
                         {r.warnings.join(' · ')}
                       </span>
                     ) : (
@@ -316,8 +318,8 @@ export function CsvUploader() {
           </table>
         </div>
         {rows.length > 200 && (
-          <p className="p-3 text-xs text-muted-foreground text-center border-t border-border/50">
-            Showing first 200 of {rows.length}. All rows will be processed on import.
+          <p className="p-2 sm:p-3 text-xs text-muted-foreground text-center border-t border-border/50">
+            Showing first 200 of {rows.length}. All will be processed on import.
           </p>
         )}
       </div>
