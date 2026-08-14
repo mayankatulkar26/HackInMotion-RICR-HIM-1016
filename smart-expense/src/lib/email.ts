@@ -1,14 +1,21 @@
 import nodemailer from 'nodemailer';
 
-// Configure SMTP email service
+// Configure SMTP email service.
+//
+// Timeouts are intentionally aggressive (10s each): serverless hosts kill
+// long-running functions at ~15-30s, so we'd rather fail fast and surface
+// the real error to the user than hang until the platform kills us.
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true', // false for TLS, true for SSL
+  secure: process.env.SMTP_SECURE === 'true', // false for STARTTLS (587), true for SSL (465)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: 10_000,
+  greetingTimeout: 10_000,
+  socketTimeout: 10_000,
 });
 
 // Validate configuration

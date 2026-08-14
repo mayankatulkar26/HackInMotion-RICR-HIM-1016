@@ -1,6 +1,8 @@
 import {
   computeHealthScore,
   detectSubscriptions,
+  detectUpcomingBills,
+  getBenchmarkComparison,
   monthlyTrend,
   spendingSpikes,
   topCategories,
@@ -10,18 +12,23 @@ import { Badge } from '@/components/ui/badge';
 import { SpendingPie } from '@/components/charts/spending-pie';
 import { MonthlyTrend } from '@/components/charts/monthly-trend';
 import { SavingsSimulator } from '@/components/insights/savings-simulator';
+import { BenchmarkComparison } from '@/components/insights/benchmark-comparison';
+import { UpcomingBills } from '@/components/dashboard/upcoming-bills';
 import { formatCurrency } from '@/lib/utils';
 import { categoryColor } from '@/lib/categories';
 import { TrendingUp, AlertTriangle, Repeat } from 'lucide-react';
 
 export default async function InsightsPage() {
-  const [score, top, trend, subs, spikes] = await Promise.all([
-    computeHealthScore(),
-    topCategories(8),
-    monthlyTrend(6),
-    detectSubscriptions(),
-    spendingSpikes(),
-  ]);
+  const [score, top, trend, subs, spikes, upcomingBills, benchmark] =
+    await Promise.all([
+      computeHealthScore(),
+      topCategories(8),
+      monthlyTrend(6),
+      detectSubscriptions(),
+      spendingSpikes(),
+      detectUpcomingBills(30),
+      getBenchmarkComparison(),
+    ]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -99,6 +106,13 @@ export default async function InsightsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Peer benchmark */}
+      <BenchmarkComparison initial={benchmark} />
+
+      {/* Upcoming bills — rendered here as well as on the dashboard so
+          users can see the full 30-day view without leaving Insights. */}
+      {upcomingBills.length > 0 && <UpcomingBills bills={upcomingBills} />}
 
       {/* Simulator + Charts */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
