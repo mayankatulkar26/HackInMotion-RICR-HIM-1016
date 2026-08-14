@@ -173,9 +173,17 @@ export function Topbar({ user, goals = [] }: Props) {
               router.push('/');
             }}
           >
-            <Button size="sm" variant="outline" type="submit">
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Sign out</span>
+            <Button
+              size="sm"
+              variant="outline"
+              type="submit"
+              className="group relative overflow-hidden border-red-200 bg-white text-red-600 transition-all duration-300 hover:border-red-600 hover:text-white"
+            >
+              <span className="absolute inset-y-0 left-0 w-0 origin-left scale-x-0 bg-red-600 transition-all duration-300 ease-out group-hover:w-full group-hover:scale-x-100" />
+              <span className="relative z-10 flex items-center gap-2">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </span>
             </Button>
           </form>
         </div>

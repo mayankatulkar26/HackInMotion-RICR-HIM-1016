@@ -87,13 +87,13 @@ export default async function DashboardHome() {
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <MonthFilter current={filterMonth} months={months} />
           <Button asChild variant="outline" className="flex-1 sm:flex-none">
-            <Link href="/transactions">
+            <Link href="/transactions?tab=csv">
               <Upload className="h-4 w-4" />
               <span className="hidden xs:inline">Import</span>
             </Link>
           </Button>
           <Button asChild className="flex-1 sm:flex-none">
-            <Link href="/transactions">
+            <Link href="/transactions?tab=manual">
               <PlusCircle className="h-4 w-4" />
               <span>Add transaction</span>
             </Link>

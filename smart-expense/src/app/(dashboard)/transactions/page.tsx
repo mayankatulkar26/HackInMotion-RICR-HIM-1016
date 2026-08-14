@@ -4,8 +4,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { TransactionForm } from '@/components/transactions/transaction-form';
 import { CsvUploader } from '@/components/transactions/csv-uploader';
 import { StatementsView } from '@/components/transactions/statements-view';
+import { getTransactionsTab } from '@/lib/transactions-tab';
 
-export default async function TransactionsPage() {
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string | string[] }>;
+}) {
+  const params = (await searchParams) ?? {};
+  const activeTab = getTransactionsTab(params.tab);
+
   const [all, { batches, manualCount }] = await Promise.all([
     listTransactions({ limit: 1000 }),
     listBatches(),
@@ -30,7 +38,7 @@ export default async function TransactionsPage() {
             <CardDescription>Manual entry or bulk import.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="manual">
+            <Tabs defaultValue={activeTab}>
               <TabsList className="grid grid-cols-2 w-full">
                 <TabsTrigger value="manual">Manual</TabsTrigger>
                 <TabsTrigger value="csv">CSV / Excel / PDF</TabsTrigger>
