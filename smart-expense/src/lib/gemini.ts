@@ -103,7 +103,7 @@ async function callGemini(prompt: AiPrompt): Promise<string> {
     model: GEMINI_MODEL,
     ...(system ? { systemInstruction: system } : {}),
   });
-  const res = await withRetry(() => model.generateContent(user));
+  const res = await callWithRetry(() => model.generateContent(user));
   return res.response.text().trim();
 }
 
@@ -142,7 +142,7 @@ async function callGroq(prompt: AiPrompt): Promise<string> {
     const data = await res.json();
     return String(data.choices?.[0]?.message?.content ?? '').trim();
   };
-  return withRetry(doOnce);
+  return callWithRetry(doOnce);
 }
 
 /**
