@@ -3,7 +3,7 @@
  * so the dashboard renders without going through CSV import.
  *
  * Run:  npm run db:seed
- * User: demo@smartexpense.dev  /  demo1234
+ * User: demo@wealthsight.dev  /  demo1234
  */
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';

@@ -19,7 +19,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SmartExpense — Financial health, at a glance',
+  title: 'Wealth Sight — Financial health, at a glance',
   description:
     'AI-powered expense analyzer with automatic categorization, a financial health score, and personalized recommendations.',
 };

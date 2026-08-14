@@ -38,7 +38,7 @@ export function LandingHero() {
           transition={{ duration: 0.6, delay: 0.15 }}
           className="mt-5 max-w-xl text-lg text-muted-foreground"
         >
-          Upload a bank statement. SmartExpense auto-categorizes every transaction,
+          Upload a bank statement. Wealth Sight auto-categorizes every transaction,
           scores your financial health, and tells you what to fix — in plain English.
         </motion.p>
 

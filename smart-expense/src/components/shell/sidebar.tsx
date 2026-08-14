@@ -32,7 +32,7 @@ export function Sidebar() {
             <Wallet className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm tracking-tight leading-tight">SmartExpense</p>
+            <p className="text-sm tracking-tight leading-tight">Wealth Sight</p>
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Financial dashboard
             </p>

@@ -252,14 +252,23 @@ export function CsvUploader() {
                     )}
                   </td>
                   <td className="px-3 py-2">{r.description || <span className="text-warning">missing</span>}</td>
-                  <td className="px-3 py-2 text-right num">
-                    {r.amount !== null ? formatCurrency(r.amount) : (
+                  <td
+                    className={cn(
+                      'px-3 py-2 text-right num',
+                      r.type === 'debit' ? 'text-destructive' : 'text-success',
+                    )}
+                  >
+                    {r.amount !== null ? (
+                      r.type === 'debit' ? '-' : ''
+                    ) + formatCurrency(Math.abs(r.amount)) : (
                       <span className="text-warning">—</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <Badge variant={r.type === 'credit' ? 'success' : 'default'}>
-                      {r.type}
+                      <span className={r.type === 'debit' ? 'text-destructive' : ''}>
+                        {r.type}
+                      </span>
                     </Badge>
                   </td>
                   <td className="px-3 py-2 text-xs">
