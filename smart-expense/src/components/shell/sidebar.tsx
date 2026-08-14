@@ -6,7 +6,7 @@ import { NavList } from './nav-list';
 
 export function Sidebar() {
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border/60 bg-card/40 backdrop-blur">
+    <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-screen w-64 shrink-0 flex-col self-start border-r border-border/60 bg-card/40 backdrop-blur">
       <div className="p-5">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-accent/15 text-accent">
