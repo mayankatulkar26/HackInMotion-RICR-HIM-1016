@@ -31,7 +31,15 @@ export function LoginForm() {
     startTransition(async () => {
       const res = await loginAction(fd);
       if (res.ok) {
-        toast.success('Welcome back!');
+        toast.success('Welcome back!', {
+          position: 'top-center',
+          duration: 1800,
+          style: {
+            maxWidth: 'min(82vw, 340px)',
+            fontSize: '0.9rem',
+            lineHeight: '1.3',
+          },
+        });
         router.push(from);
         router.refresh();
       } else {

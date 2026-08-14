@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
 import {
   LayoutDashboard,
   LogOut,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOutAction } from '@/actions/auth';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 const NAV = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -31,12 +32,50 @@ const NAV = [
 
 interface Props {
   user: { name?: string | null; email?: string | null };
+  goals?: Array<{
+    id: string;
+    name: string;
+    targetAmount: number;
+    currentAmount: number;
+  }>;
 }
 
-export function Topbar({ user }: Props) {
+export function Topbar({ user, goals = [] }: Props) {
   const path = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
+  const hasShownGoalToast = useRef(false);
+
+  useEffect(() => {
+    if (hasShownGoalToast.current || goals.length === 0) return;
+
+    const activeGoals = goals.filter(
+      (goal) => goal.targetAmount > 0 && goal.currentAmount < goal.targetAmount,
+    );
+
+    if (activeGoals.length === 0) {
+      hasShownGoalToast.current = true;
+      return;
+    }
+
+    hasShownGoalToast.current = true;
+
+    activeGoals.slice(0, 2).forEach((goal) => {
+      const pctComplete = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
+      const pctLeft = Math.max(0, 100 - pctComplete);
+      const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
+
+      toast(`${goal.name} — ${pctLeft.toFixed(0)}% left`, {
+        description: `${formatCurrency(remaining)} remaining to complete this goal`,
+        duration: 2500,
+        action: {
+          label: 'View goal',
+          onClick: () => router.push('/budgets'),
+        },
+      });
+    });
+  }, [goals, router]);
 
   const initials = (user.name || user.email || 'U')
     .split(/[\s@]/)
@@ -59,11 +98,19 @@ export function Topbar({ user }: Props) {
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <p className="font-semibold">Wealth Sight</p>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">Wealth Sight</p>
+          </div>
         </div>
 
-        <div className="hidden lg:block text-sm text-muted-foreground">
-          Welcome back{user.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
+        <div className="flex-1 min-w-0 text-left lg:flex-none lg:text-left">
+          <div className="block text-base font-extrabold uppercase tracking-[0.08em] text-foreground/95 sm:text-lg lg:text-xl">
+            <span className="text-foreground">Hello</span>
+            <span className="ml-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
+              {user.name ? `, ${user.name.split(' ')[0].toUpperCase()}` : ''}
+            </span>
+            <span className="ml-1 align-middle">👋</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -90,7 +137,14 @@ export function Topbar({ user }: Props) {
               <p className="text-muted-foreground leading-tight">{user.email}</p>
             </div>
           </div>
-          <form action={signOutAction}>
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault();
+              await signOutAction();
+              toast.success('Sign out successfully');
+              router.push('/');
+            }}
+          >
             <Button size="sm" variant="outline" type="submit">
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Sign out</span>

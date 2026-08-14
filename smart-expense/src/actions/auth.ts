@@ -1,5 +1,6 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { AuthError } from 'next-auth';
@@ -25,8 +26,13 @@ const otpVerifySchema = z.object({
   otp: z.string().length(6, 'OTP must be 6 digits'),
 });
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
-export type OTPSignupResult = { ok: true; message: string } | { ok: false; error: string };
+export type ActionResult =
+  | { ok: true; user?: { name?: string | null; email?: string | null } }
+  | { ok: false; error: string };
+
+export type OTPSignupResult =
+  | { ok: true; message: string }
+  | { ok: false; error: string };
 
 export async function signupAction(formData: FormData): Promise<ActionResult> {
   const parsed = signupSchema.safeParse({
@@ -199,12 +205,21 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
   }
 
   try {
+    const email = parsed.data.email.toLowerCase();
     await signIn('credentials', {
-      email: parsed.data.email.toLowerCase(),
+      email,
       password: parsed.data.password,
       redirect: false,
     });
-    return { ok: true };
+
+    const user = await User.findOne({ email }).select('name email').lean();
+    return {
+      ok: true,
+      user: {
+        name: user?.name ?? null,
+        email: user?.email ?? email,
+      },
+    };
   } catch (err) {
     if (err instanceof AuthError) {
       return { ok: false, error: 'Invalid email or password.' };
@@ -214,7 +229,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
 }
 
 export async function signOutAction() {
-  await signOut({ redirectTo: '/login' });
+  await signOut({ redirect: false });
 }
 
 /* ============================================================ FORGOT PASSWORD ========== */
