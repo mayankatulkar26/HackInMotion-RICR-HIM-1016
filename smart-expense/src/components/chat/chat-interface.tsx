@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Send, Sparkles, User } from 'lucide-react';
+import { Check, Copy, Loader2, Send, Sparkles, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ const SUGGESTIONS = [
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [pending, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -27,12 +28,24 @@ export function ChatInterface() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, pending]);
 
+  async function copyMessage(text: string, id: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      toast.success('Copied to clipboard');
+      setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 1200);
+    } catch {
+      toast.error('Copy failed');
+    }
+  }
+
   function send(question: string) {
     const q = question.trim();
     if (!q || pending) return;
     const id = crypto.randomUUID();
     setMessages((m) => [...m, { id, role: 'user', text: q }]);
     setInput('');
+
     startTransition(async () => {
       try {
         const answer = await askQuestion(q);
@@ -60,7 +73,7 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-16rem)] min-h-[380px] sm:h-[540px]">
+    <div className="flex flex-col h-[calc(100dvh-16rem)] min-h-[380px] sm:h-[540px] lg:max-w-3xl lg:mx-auto">
       <div className="flex-1 overflow-y-auto space-y-3 pr-1">
         {messages.length === 0 && (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -104,7 +117,19 @@ export function ChatInterface() {
                     : 'max-w-[80%] rounded-2xl rounded-tl-sm bg-secondary/60 text-foreground px-4 py-2.5 text-sm border border-border/50 whitespace-pre-wrap'
                 }
               >
-                {m.text}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 whitespace-pre-wrap">{m.text}</div>
+                  {m.role === 'ai' && (
+                    <button
+                      type="button"
+                      onClick={() => copyMessage(m.text, m.id)}
+                      className="ml-2 mt-0.5 rounded-md border border-border/60 bg-background/40 p-1.5 text-muted-foreground transition hover:text-foreground"
+                      aria-label="Copy AI response"
+                    >
+                      {copiedId === m.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}
