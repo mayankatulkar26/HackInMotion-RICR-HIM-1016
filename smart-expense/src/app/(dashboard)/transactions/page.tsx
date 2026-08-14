@@ -12,18 +12,18 @@ export default async function TransactionsPage() {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-0">
       <div>
         <p className="text-xs uppercase tracking-wider text-muted-foreground">
           Data in
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight mt-1">Transactions</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Transactions</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
           Every upload becomes its own statement. Use the tabs to view them separately or the combined feed.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
         <Card>
           <CardHeader>
             <CardTitle>Add transactions</CardTitle>

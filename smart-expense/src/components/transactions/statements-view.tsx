@@ -172,14 +172,18 @@ export function StatementsView({ batches, manualCount, all }: Props) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Layers className="h-4 w-4 text-accent" />
             Statements
           </CardTitle>
-          <CardDescription>
-            {batches.length} uploaded · {manualCount} manual/legacy · {all.length} total
+          <CardDescription className="text-xs sm:text-sm mt-1">
+            <span className="block sm:inline">{batches.length} uploaded</span>
+            <span className="hidden sm:inline"> · </span>
+            <span className="block sm:inline">{manualCount} manual</span>
+            <span className="hidden sm:inline"> · </span>
+            <span className="block sm:inline">{all.length} total</span>
           </CardDescription>
         </div>
         {all.length > 0 && (
@@ -188,33 +192,34 @@ export function StatementsView({ batches, manualCount, all }: Props) {
             variant="outline"
             onClick={onRecategorize}
             disabled={recatPending}
-            className="shrink-0"
+            className="shrink-0 text-xs sm:text-sm w-full sm:w-auto"
             title="Re-run the rule-based categorizer + AI over every transaction"
           >
             {recatPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
             ) : (
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             )}
             <span className="hidden sm:inline">Re-categorize</span>
+            <span className="sm:hidden">Recat</span>
           </Button>
         )}
       </CardHeader>
       <CardContent>
         {/* Tab strip */}
-        <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
+        <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-3 -mx-1 px-1">
           <Tab
             active={active === 'all'}
             onClick={() => setActive('all')}
-            icon={<Layers className="h-3.5 w-3.5" />}
+            icon={<Layers className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
             label="All"
             count={all.length}
           />
           <Tab
             active={active === 'manual'}
             onClick={() => setActive('manual')}
-            icon={<PenLine className="h-3.5 w-3.5" />}
-            label="Manual & legacy"
+            icon={<PenLine className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+            label="Manual"
             count={manualCount}
           />
           {batches.map((b) => {
@@ -224,8 +229,8 @@ export function StatementsView({ batches, manualCount, all }: Props) {
                 key={b.id}
                 active={active === b.id}
                 onClick={() => setActive(b.id)}
-                icon={<Icon className="h-3.5 w-3.5" />}
-                label={truncate(b.name, 28)}
+                icon={<Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+                label={truncate(b.name, 20)}
                 count={b.txCount ?? 0}
               />
             );
@@ -239,38 +244,38 @@ export function StatementsView({ batches, manualCount, all }: Props) {
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="mt-3 rounded-lg border border-border/70 bg-secondary/30 p-4 flex flex-wrap items-center justify-between gap-3"
+            className="mt-3 rounded-lg border border-border/70 bg-secondary/30 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3"
           >
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{activeBatch.name}</p>
+              <p className="text-xs sm:text-sm font-medium truncate">{activeBatch.name}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Imported {format(new Date(activeBatch.createdAt), 'd MMM yyyy, HH:mm')} · source: {activeBatch.source}
+                {format(new Date(activeBatch.createdAt), 'd MMM yyyy')}
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <Badge variant="accent">{activeBatch.inserted} imported</Badge>
+            <div className="flex items-center gap-1 text-xs flex-wrap sm:flex-nowrap">
+              <Badge variant="accent" className="text-xs">{activeBatch.inserted} imported</Badge>
               {activeBatch.categorizedByRule > 0 && (
-                <Badge variant="outline">{activeBatch.categorizedByRule} rule</Badge>
+                <Badge variant="outline" className="text-xs">{activeBatch.categorizedByRule} rule</Badge>
               )}
               {activeBatch.categorizedByAI > 0 && (
-                <Badge variant="outline">{activeBatch.categorizedByAI} AI</Badge>
+                <Badge variant="outline" className="text-xs">{activeBatch.categorizedByAI} AI</Badge>
               )}
               {activeBatch.skippedDuplicates > 0 && (
-                <Badge variant="warning">{activeBatch.skippedDuplicates} dup skipped</Badge>
+                <Badge variant="warning" className="text-xs">{activeBatch.skippedDuplicates} dup</Badge>
               )}
               <Button
                 size="sm"
                 variant="ghost"
                 disabled={pending}
                 onClick={() => onDelete(activeBatch.id, activeBatch.name)}
-                className="hover:text-destructive"
+                className="hover:text-destructive text-xs"
               >
                 {pending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3 w-3" />
                 )}
-                Delete statement
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             </div>
           </motion.div>
@@ -278,52 +283,52 @@ export function StatementsView({ batches, manualCount, all }: Props) {
 
         {/* "All" tab: bulk delete-everything (guarded by two confirms) */}
         {active === 'all' && all.length > 0 && (
-          <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 p-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
             <p className="text-xs text-muted-foreground">
-              Combined view of every statement plus manual entries. Use this button to reset your data — budgets and goals will be kept.
+              All statements + manual entries. Budgets & goals are kept.
             </p>
             <Button
               size="sm"
               variant="ghost"
               disabled={pending}
               onClick={onDeleteAll}
-              className="hover:text-destructive shrink-0"
+              className="hover:text-destructive shrink-0 text-xs"
             >
               {pending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3 w-3" />
               )}
-              Delete all {all.length}
+              Delete all
             </Button>
           </div>
         )}
 
         {/* Manual-tab hint + bulk delete */}
         {active === 'manual' && manualCount > 0 && (
-          <div className="mt-3 rounded-lg border border-border/70 bg-secondary/30 p-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-3 rounded-lg border border-border/70 bg-secondary/30 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
             <p className="text-xs text-muted-foreground">
-              Manually-added transactions and rows imported before we started tracking statements.
+              Manually-added & legacy transactions.
             </p>
             <Button
               size="sm"
               variant="ghost"
               disabled={pending}
               onClick={onDeleteManual}
-              className="hover:text-destructive shrink-0"
+              className="hover:text-destructive shrink-0 text-xs"
             >
               {pending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3 w-3" />
               )}
-              Delete all {manualCount}
+              Delete all
             </Button>
           </div>
         )}
 
         {/* Transaction table for the selected tab */}
-        <div className="mt-4">
+        <div className="mt-3 sm:mt-4">
           <TransactionTable rows={activeRows} />
         </div>
       </CardContent>
@@ -349,17 +354,17 @@ function Tab({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs whitespace-nowrap transition-all shrink-0',
+        'flex items-center gap-1 sm:gap-2 rounded-full border px-2 sm:px-3 py-1 sm:py-1.5 text-xs whitespace-nowrap transition-all shrink-0',
         active
           ? 'border-accent bg-accent/10 text-accent'
           : 'border-border/60 bg-secondary/40 text-muted-foreground hover:text-foreground hover:border-border',
       )}
     >
       {icon}
-      <span className="font-medium">{label}</span>
+      <span className="font-medium text-xs">{label}</span>
       <span
         className={cn(
-          'rounded-full px-1.5 py-0.5 text-[10px] num',
+          'rounded-full px-1 sm:px-1.5 py-0 text-[9px] sm:text-[10px] num',
           active ? 'bg-accent/20' : 'bg-background/60',
         )}
       >

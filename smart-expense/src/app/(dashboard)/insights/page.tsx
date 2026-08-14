@@ -24,13 +24,13 @@ export default async function InsightsPage() {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
         <p className="text-xs uppercase tracking-wider text-muted-foreground">
           Deep dive
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight mt-1">Insights</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mt-1">Insights</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
           Every number here is aggregated live from your transactions.
         </p>
       </div>
@@ -38,8 +38,8 @@ export default async function InsightsPage() {
       {/* Score breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle>Health score breakdown</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Health score breakdown</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
             How your {score.total}/100 was calculated
           </CardDescription>
         </CardHeader>
@@ -101,7 +101,7 @@ export default async function InsightsPage() {
       </Card>
 
       {/* Simulator + Charts */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
         <SavingsSimulator
           topCategories={top}
           income={score.metrics.income}
@@ -110,8 +110,8 @@ export default async function InsightsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Where money goes</CardTitle>
-            <CardDescription>Top categories this month</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Where money goes</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Top categories this month</CardDescription>
           </CardHeader>
           <CardContent>
             <SpendingPie data={top} />
@@ -121,8 +121,8 @@ export default async function InsightsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Income vs expense</CardTitle>
-          <CardDescription>Last 6 months, transfers excluded</CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Income vs expense</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Last 6 months, transfers excluded</CardDescription>
         </CardHeader>
         <CardContent>
           <MonthlyTrend data={trend} />
@@ -130,17 +130,17 @@ export default async function InsightsPage() {
       </Card>
 
       {/* Spikes and subscriptions */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
               <div>
-                <CardTitle>Spending spikes</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Spending spikes</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Categories &gt;130% of your 3-month average
                 </CardDescription>
               </div>
-              <Badge variant="warning" className="gap-1">
+              <Badge variant="warning" className="gap-1 shrink-0 w-fit">
                 <AlertTriangle className="h-3 w-3" />
                 {spikes.length}
               </Badge>
@@ -177,14 +177,14 @@ export default async function InsightsPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
               <div>
-                <CardTitle>Detected subscriptions</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Detected subscriptions</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Recurring merchants with ≥3 hits at similar amounts
                 </CardDescription>
               </div>
-              <Badge variant="accent" className="gap-1">
+              <Badge variant="accent" className="gap-1 shrink-0 w-fit">
                 <Repeat className="h-3 w-3" />
                 {subs.length}
               </Badge>
@@ -247,9 +247,9 @@ function ScoreBar({
     pct >= 66 ? 'bg-success' : pct >= 33 ? 'bg-warning' : 'bg-destructive';
   return (
     <div className="py-3 border-b border-border/40 last:border-0">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">{label}</span>
-        <span className="num">
+      <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+        <span className="font-medium truncate">{label}</span>
+        <span className="num whitespace-nowrap shrink-0">
           <span className="text-foreground font-semibold">{value}</span>
           <span className="text-muted-foreground">/{max}</span>
         </span>
