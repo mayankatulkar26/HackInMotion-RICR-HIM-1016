@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { format } from 'date-fns';
 import {
   ArrowUpRight,
@@ -33,16 +34,19 @@ import { InsightCards } from '@/components/dashboard/insight-cards';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { formatCurrency } from '@/lib/utils';
+import { monthLabel, normalizeMonthFilter } from '@/lib/dashboard-filter';
 
 export default async function DashboardHome() {
+  const filterMonth = normalizeMonthFilter((await cookies()).get('smart-expense-month')?.value ?? null);
+
   const [score, top, trend, subs, spikes, recs, recent] = await Promise.all([
-    computeHealthScore(),
-    topCategories(6),
-    monthlyTrend(6),
-    detectSubscriptions(),
-    spendingSpikes(),
-    generateAiRecommendations(),
-    listTransactions({ limit: 6 }),
+    computeHealthScore({ month: filterMonth }),
+    topCategories(6, filterMonth),
+    monthlyTrend(6, filterMonth),
+    detectSubscriptions(filterMonth),
+    spendingSpikes(filterMonth),
+    generateAiRecommendations(filterMonth),
+    listTransactions({ limit: 6, from: filterMonth ? `${filterMonth}-01` : undefined, to: filterMonth ? `${filterMonth}-31` : undefined }),
   ]);
 
   const hasData = score.metrics.income > 0 || score.metrics.expense > 0;
@@ -62,7 +66,7 @@ export default async function DashboardHome() {
             <CalendarRange className="h-3.5 w-3.5 shrink-0" />
             <span>
               KPIs, score &amp; pie use{' '}
-              <b className="text-foreground">all your transactions</b>{' '}
+              <b className="text-foreground">{filterMonth ? monthLabel(filterMonth) : 'all your transactions'}</b>{' '}
               · trend uses 6 months · budgets &amp; spikes are per-month
             </span>
           </p>
