@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Search, Trash2 } from 'lucide-react';
 import type { Transaction } from '@/db/models';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {

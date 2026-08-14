@@ -3,8 +3,7 @@
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import type { Transaction } from '@/db/models';
-import { Badge } from '@/components/ui/badge';
-import { CATEGORY_META, categoryColor } from '@/lib/categories';
+import { categoryColor } from '@/lib/categories';
 import { cn, formatCurrency } from '@/lib/utils';
 
 export function RecentTransactions({ rows }: { rows: Transaction[] }) {
