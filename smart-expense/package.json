@@ -34,10 +34,10 @@
     "framer-motion": "^11.11.17",
     "lucide-react": "^0.462.0",
     "mongoose": "^8.24.3",
-    "next": "15.0.3",
+    "next": "^15.5.4",
     "next-auth": "5.0.0-beta.25",
     "next-themes": "^0.4.3",
-    "nodemailer": "^6.10.1",
+    "nodemailer": "^7.0.5",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -46,7 +46,7 @@
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
-    "unpdf": "^0.12.2",
+    "unpdf": "^1.8.1",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
@@ -62,7 +62,7 @@
     "cspell": "^8.16.1",
     "dotenv": "^16.4.5",
     "eslint": "^9.15.0",
-    "eslint-config-next": "15.0.3",
+    "eslint-config-next": "^15.5.4",
     "eslint-plugin-security": "^3.0.1",
     "eslint-plugin-sonarjs": "^3.0.1",
     "husky": "^9.1.7",
@@ -71,6 +71,9 @@
     "tailwindcss": "^3.4.15",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
+  },
+  "overrides": {
+    "nodemailer": "^7.0.5"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx}": [
