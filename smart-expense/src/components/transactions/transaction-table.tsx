@@ -124,7 +124,7 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
                     <td
                       className={cn(
                         'px-3 py-2 text-right num font-medium whitespace-nowrap',
-                        isCredit ? 'text-success' : 'text-foreground',
+                        isCredit ? 'text-success' : 'text-destructive',
                       )}
                     >
                       {isCredit ? '+' : '−'}

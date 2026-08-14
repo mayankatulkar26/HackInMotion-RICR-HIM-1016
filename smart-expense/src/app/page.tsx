@@ -1,12 +1,17 @@
+'use client';
+
 import Link from 'next/link';
-import { ArrowRight, Sparkles, ShieldCheck, TrendingUp, Wallet } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { ArrowRight, Moon, Sparkles, ShieldCheck, Sun, TrendingUp, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LandingHero } from '@/components/marketing/landing-hero';
 import { FeatureGrid } from '@/components/marketing/feature-grid';
 
 export default function LandingPage() {
+  const { resolvedTheme, setTheme } = useTheme();
+
   return (
-    <main className="dark min-h-dvh bg-background text-foreground relative overflow-hidden">
+    <main className="min-h-dvh bg-background text-foreground relative overflow-hidden">
       <div className="aurora" aria-hidden />
       <div className="absolute inset-0 grid-bg opacity-40" aria-hidden />
 
@@ -15,9 +20,19 @@ export default function LandingPage() {
           <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-accent">
             <Wallet className="h-4 w-4" />
           </div>
-          <span className="text-lg tracking-tight">SmartExpense</span>
+          <span className="text-lg tracking-tight">Wealth Sight</span>
         </Link>
         <nav className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Toggle theme"
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            className="h-9 w-9 rounded-full"
+          >
+            {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
           <Button asChild variant="ghost" size="sm">
             <Link href="/login">Sign in</Link>
           </Button>

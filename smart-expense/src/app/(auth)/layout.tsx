@@ -3,43 +3,44 @@ import { Wallet } from 'lucide-react';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="dark relative min-h-dvh bg-background text-foreground grid lg:grid-cols-2 overflow-hidden">
+    <main className="relative min-h-dvh bg-background text-foreground flex flex-col overflow-hidden">
       <div className="aurora" aria-hidden />
 
-      {/* Left: hero panel */}
-      <aside className="relative hidden lg:flex flex-col justify-between p-10 border-r border-border/60 bg-card/40 backdrop-blur">
+      {/* Header */}
+      <header className="relative border-b border-border/60 p-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-accent/15 text-accent">
             <Wallet className="h-5 w-5" />
           </div>
-          <span className="text-lg tracking-tight">SmartExpense</span>
+          <span className="text-lg tracking-tight">Wealth Sight</span>
         </Link>
+      </header>
 
-        <div className="relative">
-          <div className="absolute inset-0 grid-bg opacity-40" aria-hidden />
-          <blockquote className="relative text-2xl leading-relaxed font-light">
-            &ldquo;Finally saw where my money actually goes. The health score alone
-            changed three of my habits.&rdquo;
-          </blockquote>
-          <div className="mt-6 flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-accent/20 text-accent font-semibold">
-              A
+      {/* Centered form section */}
+      <section className="relative flex-1 p-6 sm:p-10">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="hidden lg:flex flex-col justify-center auth-tagline">
+            <p className="text-sm font-medium uppercase tracking-[0.28em] text-accent/80 auth-tagline-kicker">
+              Smart money habits
+            </p>
+            <div className="mt-6 space-y-3 text-4xl font-semibold leading-tight tracking-tight text-foreground/95">
+              <div className="auth-tagline-line text-transparent bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 bg-clip-text" style={{ animationDelay: '0.1s' }}>
+                Track Smart
+              </div>
+              <div className="auth-tagline-line text-transparent bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500 bg-clip-text" style={{ animationDelay: '0.35s' }}>
+                Spend Wise
+              </div>
+              <div className="auth-tagline-line text-transparent bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 bg-clip-text" style={{ animationDelay: '0.6s' }}>
+                Grow Strong
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium">Aditi Sharma</p>
-              <p className="text-xs text-muted-foreground">Product designer, Bengaluru</p>
-            </div>
+            <p className="mt-6 max-w-md text-base text-muted-foreground auth-tagline-copy" style={{ animationDelay: '0.8s' }}>
+              Make every decision clearer with a smarter way to track spending and build wealth.
+            </p>
           </div>
+
+          <div className="auth-form-panel w-full max-w-md justify-self-center lg:justify-self-end">{children}</div>
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          Built for Hack In Motion &middot; FinTech theme
-        </p>
-      </aside>
-
-      {/* Right: form */}
-      <section className="relative flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md">{children}</div>
       </section>
     </main>
   );

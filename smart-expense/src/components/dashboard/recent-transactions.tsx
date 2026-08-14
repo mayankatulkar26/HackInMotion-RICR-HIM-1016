@@ -46,7 +46,7 @@ export function RecentTransactions({ rows }: { rows: Transaction[] }) {
             <p
               className={cn(
                 'text-sm font-semibold num shrink-0',
-                isCredit ? 'text-success' : 'text-foreground',
+                isCredit ? 'text-success' : 'text-destructive',
               )}
             >
               {isCredit ? '+' : '−'}

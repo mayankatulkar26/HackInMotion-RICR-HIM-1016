@@ -1,4 +1,4 @@
-# SmartExpense — Financial Health Dashboard
+# Wealth Sight — Financial Health Dashboard
 
 AI-powered personal finance web app for Hack In Motion (FinTech theme). Upload a bank statement, get auto-categorized transactions, a financial health score, and personalized recommendations.
 
