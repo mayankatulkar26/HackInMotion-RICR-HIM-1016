@@ -49,7 +49,7 @@ export function TransactionForm() {
         toast.success('Transaction added');
         (e.target as HTMLFormElement).reset();
         setCategory('');
-      } catch (err) {
+      } catch (_err) {
         toast.error('Could not save. Try again.');
       }
     });

@@ -16,8 +16,8 @@ export function OTPSignupForm() {
   const [showPw, setShowPw] = useState(false);
   const [pending, startTransition] = useTransition();
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [_name, setName] = useState('');
+  const [_otpSent, setOtpSent] = useState(false);
   const router = useRouter();
 
   function onSignupSubmit(e: React.FormEvent<HTMLFormElement>) {

@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${plex.variable} ${plexMono.variable}`}>
       <body className="min-h-dvh font-sans">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           {children}
           <Toaster
             richColors
