@@ -106,7 +106,7 @@ export default function LandingPage() {
       </section>
 
       <footer className="relative z-10 mx-auto max-w-7xl px-6 py-8 text-center text-xs text-muted-foreground">
-        Built for Hack In Motion · FinTech &amp; Personal Finance
+        Smart Finance · Smarter Decisions
       </footer>
     </main>
   );

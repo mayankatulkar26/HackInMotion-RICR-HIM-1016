@@ -13,16 +13,17 @@ export default function ChatPage() {
         </p>
         <h1 className="text-3xl font-semibold tracking-tight mt-1">Ask your money</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Questions are answered from your actual transactions, budgets, and detected subscriptions.
+          Answered from your real transactions — recent activity, top merchants, monthly breakdowns, budgets, and detected subscriptions.
         </p>
       </div>
 
       {!enabled && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Gemini API key not set</CardTitle>
+            <CardTitle className="text-base">No AI provider configured</CardTitle>
             <CardDescription>
-              Add <code className="text-accent">GEMINI_API_KEY</code> to your <code>.env</code> and restart the dev server to enable AI chat and recommendations. Get a free key at{' '}
+              Add either <code className="text-accent">GEMINI_API_KEY</code> or{' '}
+              <code className="text-accent">GROQ_API_KEY</code> to your <code>.env</code> and restart the dev server to enable AI chat and recommendations. Setting both is fine — Gemini is tried first and Groq is the fallback. Free keys at{' '}
               <a
                 className="text-accent underline"
                 href="https://aistudio.google.com/apikey"
@@ -30,6 +31,15 @@ export default function ChatPage() {
                 rel="noreferrer"
               >
                 aistudio.google.com/apikey
+              </a>{' '}
+              and{' '}
+              <a
+                className="text-accent underline"
+                href="https://console.groq.com/keys"
+                target="_blank"
+                rel="noreferrer"
+              >
+                console.groq.com/keys
               </a>.
             </CardDescription>
           </CardHeader>
@@ -40,7 +50,7 @@ export default function ChatPage() {
         <CardHeader>
           <CardTitle>Chat</CardTitle>
           <CardDescription>
-            Try: &ldquo;How much did I spend on food last month?&rdquo;, &ldquo;What are my subscriptions?&rdquo;, &ldquo;Where can I cut down?&rdquo;
+            Try: &ldquo;How much at BigBasket in July?&rdquo;, &ldquo;What did I spend on Aug 5?&rdquo;, &ldquo;My top 3 merchants?&rdquo;, &ldquo;Food spend last month vs this month?&rdquo;
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -53,7 +53,7 @@ export function FeatureGrid() {
         transition={{ duration: 0.5 }}
         className="text-3xl font-semibold tracking-tight sm:text-4xl"
       >
-        Built like a product, not a demo.
+        Your Money Deserves a Smarter Tracker.
       </motion.h2>
       <p className="mt-3 max-w-2xl text-muted-foreground">
         Every feature is powered by real data, real logic, and real APIs. Nothing is

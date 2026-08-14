@@ -111,7 +111,20 @@ export function CsvUploader() {
           source: fileKind ?? 'csv',
         });
         toast.success(
-          `Imported ${res.inserted}. ${res.categorizedByRule} rule + ${res.categorizedByAI} AI · ${res.skippedDuplicates} dup skipped.`,
+          `Imported ${res.inserted}`,
+          {
+            description: [
+              `${res.categorizedByRule} by rules`,
+              `${res.categorizedByAI} by AI`,
+              res.categorizedByFallback > 0 &&
+                `${res.categorizedByFallback} by smart fallback`,
+              res.skippedDuplicates > 0 &&
+                `${res.skippedDuplicates} dup skipped`,
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            duration: 6000,
+          },
         );
         reset();
       } catch {
