@@ -109,13 +109,13 @@ const RULES: Array<{ keywords: string[]; category: Category }> = [
       'wazirx', 'binance',
     ],
   },
-  // Transfer
+  // Transfer — system-level protocol names only.
+  // "sent to X" / "received from X" are too ambiguous (usually P2P with a
+  // friend or vendor, not an internal move); we let those flow through to
+  // Uncategorized so they count as real income/expense.
   {
     category: 'Transfer',
-    keywords: [
-      'imps', 'neft', 'rtgs', 'upi', 'p2p', 'transfer', 'sent to',
-      'received from',
-    ],
+    keywords: ['imps', 'neft', 'rtgs', 'p2p transfer', 'own account'],
   },
 ];
 

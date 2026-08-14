@@ -61,7 +61,11 @@ export function CsvUploader() {
         fd.append('file', file);
         const parsed = await parsePdfAction(fd);
         if (parsed.errors.length > 0) {
-          toast.error(parsed.errors[0]);
+          // Show the headline error + text preview if the parser returned one
+          toast.error(parsed.errors[0], {
+            description: parsed.errors[1],
+            duration: 10_000,
+          });
         }
         setRows(parsed.rows);
       }
@@ -102,7 +106,10 @@ export function CsvUploader() {
 
     startTransition(async () => {
       try {
-        const res = await importTransactions(toImport);
+        const res = await importTransactions(toImport, {
+          fileName,
+          source: fileKind ?? 'csv',
+        });
         toast.success(
           `Imported ${res.inserted}. ${res.categorizedByRule} rule + ${res.categorizedByAI} AI · ${res.skippedDuplicates} dup skipped.`,
         );
@@ -185,23 +192,32 @@ export function CsvUploader() {
 
   return (
     <div className="mt-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium flex items-center gap-2">
-            {fileName}
-            <Badge variant="outline" className="text-[10px]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <p
+              className="text-sm font-medium truncate min-w-0"
+              title={fileName}
+            >
+              {fileName}
+            </p>
+            <Badge variant="outline" className="text-[10px] shrink-0">
               {kindLabel}
             </Badge>
-          </p>
-          <p className="text-xs text-muted-foreground">
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
             {importable.length} importable · {warned.length} with warnings
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button variant="ghost" size="sm" onClick={reset}>
             Cancel
           </Button>
-          <Button size="sm" onClick={onImport} disabled={pending || importable.length === 0}>
+          <Button
+            size="sm"
+            onClick={onImport}
+            disabled={pending || importable.length === 0}
+          >
             {pending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Importing…

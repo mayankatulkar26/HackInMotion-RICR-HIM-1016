@@ -156,7 +156,10 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
                 const color = categoryColor(r.category);
                 const isCredit = r.type === 'credit';
                 return (
-                  <tr key={r.id} className="hover:bg-secondary/40 transition-colors">
+                  <tr
+                    key={r.id}
+                    className="group hover:bg-secondary/40 transition-colors"
+                  >
                     <td className="px-3 py-2 text-xs whitespace-nowrap">
                       {format(new Date(r.date), 'd MMM yyyy')}
                     </td>
@@ -189,7 +192,8 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
                         onClick={() => onDelete(r.id)}
                         disabled={pending}
                         aria-label="Delete transaction"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 hover:text-destructive"
+                        title="Delete transaction"
+                        className="h-8 w-8 text-muted-foreground/70 opacity-70 hover:opacity-100 hover:text-destructive group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

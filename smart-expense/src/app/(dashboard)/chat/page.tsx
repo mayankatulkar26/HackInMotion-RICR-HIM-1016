@@ -1,38 +1,50 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageCircle } from 'lucide-react';
+import { ChatInterface } from '@/components/chat/chat-interface';
+import { isGeminiConfigured } from '@/lib/gemini';
 
 export default function ChatPage() {
+  const enabled = isGeminiConfigured();
+
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Coming Day 2</p>
-        <h1 className="text-3xl font-semibold tracking-tight mt-1">AI Chat</h1>
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          AI Assistant
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight mt-1">Ask your money</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Ask questions about your spending, grounded in your real data.
+          Questions are answered from your actual transactions, budgets, and detected subscriptions.
         </p>
       </div>
 
+      {!enabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Gemini API key not set</CardTitle>
+            <CardDescription>
+              Add <code className="text-accent">GEMINI_API_KEY</code> to your <code>.env</code> and restart the dev server to enable AI chat and recommendations. Get a free key at{' '}
+              <a
+                className="text-accent underline"
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noreferrer"
+              >
+                aistudio.google.com/apikey
+              </a>.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Ask your money anything</CardTitle>
-          <CardDescription>Powered by Gemini · shipping Day 2</CardDescription>
+          <CardTitle>Chat</CardTitle>
+          <CardDescription>
+            Try: &ldquo;How much did I spend on food last month?&rdquo;, &ldquo;What are my subscriptions?&rdquo;, &ldquo;Where can I cut down?&rdquo;
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3">
-            {[
-              'How much did I spend on food last month?',
-              'What are my recurring subscriptions?',
-              'Am I on track for my emergency fund?',
-            ].map((q) => (
-              <div
-                key={q}
-                className="rounded-lg border border-border/70 bg-secondary/30 p-4 flex items-center gap-3"
-              >
-                <MessageCircle className="h-4 w-4 text-accent shrink-0" />
-                <p className="text-sm text-muted-foreground">{q}</p>
-              </div>
-            ))}
-          </div>
+          <ChatInterface />
         </CardContent>
       </Card>
     </div>
