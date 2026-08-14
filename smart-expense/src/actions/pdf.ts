@@ -139,7 +139,11 @@ function extractTransactionsFromText(text: string): Record<string, string>[] {
     // Scrub noise before extracting amount candidates so digits from times /
     // reference IDs never enter the picker.
     const scrubbed = block
-      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|AM|PM)?\b/g, ' ') // clock times
+      // clock times — colon-separated (12:34, 12:34:56, optional am/pm)
+      .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|AM|PM)?\b/g, ' ')
+      // and space-separated ("01 15 pm", "10 47 am") — am/pm required so
+      // we don't accidentally eat "10 47" from an address or reference.
+      .replace(/\b\d{1,2}\s+\d{2}(?:\s+\d{2})?\s+(?:am|pm|AM|PM)\b/g, ' ')
       .replace(/\bT\d{12,}\b/g, ' ') // PhonePe txn IDs (T + long digit run)
       .replace(/\b\d{12,}\b/g, ' ') // UTR / phone numbers
       .replace(/\b(?:X{3,}|\*{3,})\d+\b/g, ' ') // masked account tails
@@ -208,6 +212,7 @@ function extractTransactionsFromText(text: string): Record<string, string>[] {
       .replace(/\bXXXXX\w+\b/gi, ' ')
       .replace(/\b(?:X{3,}|\*{3,})\d+\b/g, ' ')
       .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|AM|PM)?\b/gi, ' ')
+      .replace(/\b\d{1,2}\s+\d{2}(?:\s+\d{2})?\s+(?:am|pm|AM|PM)\b/gi, ' ')
       .replace(/Transaction\s*ID/gi, ' ')
       .replace(/UTR\s*(?:No\.?)?/gi, ' ')
       .replace(/Paid by/gi, ' ')
