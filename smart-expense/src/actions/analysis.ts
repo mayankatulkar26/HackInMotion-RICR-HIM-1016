@@ -284,6 +284,264 @@ export async function detectSubscriptions(
   return results.sort((a, b) => b.monthlyEstimate - a.monthlyEstimate);
 }
 
+/* ============================================================ Bill Reminder
+ * Predicts the next expected date for every recurring merchant and returns
+ * anything due within a rolling window. Reuses the same "≥3 hits at similar
+ * ₹ over a monthly-ish cadence" heuristic as detectSubscriptions, but here
+ * we ADD a projected next-date and a status band the UI can color-code.
+ * ============================================================ */
+
+export type UpcomingBill = {
+  merchant: string;
+  category: string;
+  amount: number;
+  lastSeen: Date;
+  nextExpected: Date;
+  daysUntilDue: number; // negative = overdue
+  medianGapDays: number;
+  hits: number;
+  status: 'overdue' | 'due-soon' | 'upcoming';
+};
+
+/** Median of a numeric array. Used for gap prediction — robust to outliers. */
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Bills / subscriptions due within `withinDays` from today.
+ * `status`:
+ *   - overdue    : expected date has passed and no matching debit landed
+ *   - due-soon   : expected within the next 7 days
+ *   - upcoming   : expected 8–`withinDays` days out
+ *
+ * Anything expected beyond `withinDays` is skipped (too far to remind).
+ * Merchants that have been silent >90 days since last hit are treated as
+ * cancelled and excluded — no false "overdue by 200 days" noise.
+ */
+export async function detectUpcomingBills(
+  withinDays = 30,
+): Promise<UpcomingBill[]> {
+  const userId = await requireUser();
+  const now = new Date();
+  const sixMonthsAgo = new Date(now);
+  sixMonthsAgo.setMonth(now.getMonth() - 6);
+
+  const rows = await Transaction.find({
+    userId,
+    type: 'debit',
+    date: { $gte: sixMonthsAgo },
+    merchantName: { $exists: true, $ne: null },
+  })
+    .select({ merchantName: 1, amount: 1, date: 1, category: 1 })
+    .lean();
+
+  type Group = {
+    merchant: string;
+    amount: number;
+    category: string;
+    dates: Date[];
+  };
+  const groups = new Map<string, Group>();
+  for (const t of rows) {
+    if (!t.merchantName) continue;
+    const bucket = Math.round(t.amount / 10) * 10;
+    const key = `${t.merchantName}|${bucket}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        merchant: t.merchantName,
+        amount: bucket,
+        category: t.category,
+        dates: [],
+      });
+    }
+    groups.get(key)!.dates.push(new Date(t.date));
+  }
+
+  const bills: UpcomingBill[] = [];
+  const nowMs = now.getTime();
+  const DAY_MS = 86_400_000;
+
+  for (const g of groups.values()) {
+    if (g.dates.length < 3) continue;
+    g.dates.sort((a, b) => a.getTime() - b.getTime());
+
+    const gaps: number[] = [];
+    for (let i = 1; i < g.dates.length; i++) {
+      gaps.push((g.dates[i].getTime() - g.dates[i - 1].getTime()) / DAY_MS);
+    }
+    const avgGap = gaps.reduce((s, x) => s + x, 0) / gaps.length;
+    // Monthly-ish (20–40 days) OR quarterly-ish (75–105 days) OR annual-ish (330-400 days)
+    const cadenceOk =
+      (avgGap >= 20 && avgGap <= 40) ||
+      (avgGap >= 75 && avgGap <= 105) ||
+      (avgGap >= 330 && avgGap <= 400);
+    if (!cadenceOk) continue;
+
+    const medianGapDays = median(gaps);
+    const lastSeen = g.dates[g.dates.length - 1];
+    const daysSinceLast = (nowMs - lastSeen.getTime()) / DAY_MS;
+
+    // Merchant silent for >90 days beyond its expected gap → likely cancelled.
+    if (daysSinceLast > medianGapDays + 90) continue;
+
+    const nextExpected = new Date(lastSeen.getTime() + medianGapDays * DAY_MS);
+    const daysUntilDue = Math.round(
+      (nextExpected.getTime() - nowMs) / DAY_MS,
+    );
+
+    // Skip bills that are too far out — no value reminding today.
+    if (daysUntilDue > withinDays) continue;
+    // Skip already-paid: if there's a hit AFTER the previous "nextExpected"
+    // window closed, the current lastSeen IS that payment → daysUntilDue is
+    // essentially the next cycle. We keep those since they're the reminder.
+
+    let status: UpcomingBill['status'];
+    if (daysUntilDue < 0) status = 'overdue';
+    else if (daysUntilDue <= 7) status = 'due-soon';
+    else status = 'upcoming';
+
+    bills.push({
+      merchant: g.merchant,
+      category: g.category,
+      amount: g.amount,
+      lastSeen,
+      nextExpected,
+      daysUntilDue,
+      medianGapDays: Math.round(medianGapDays),
+      hits: g.dates.length,
+      status,
+    });
+  }
+
+  // Sort by urgency: overdue first (most-overdue first), then due-soon, then upcoming
+  return bills.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+}
+
+/* =========================================================== Peer benchmark
+ * Compares the current user's spending % vs illustrative Indian peer data.
+ * The bracket is either passed by the UI (dropdown) or inferred from the
+ * user's median monthly income across the last 3 months.
+ * =========================================================== */
+
+import {
+  bracketForMonthlyIncome,
+  bracketLabel,
+  PEER_BENCHMARKS,
+  type IncomeBracket,
+} from '@/lib/benchmarks';
+
+export type BenchmarkRow = {
+  category: string;
+  userPct: number; // % of user's monthly income
+  peerPct: number; // % from the bracket table
+  delta: number; // userPct - peerPct
+  verdict: 'above' | 'below' | 'on-par';
+};
+
+export type BenchmarkResult = {
+  bracket: IncomeBracket;
+  bracketLabel: string;
+  userMonthlyIncome: number;
+  userMonthlyExpense: number;
+  detectedFromData: boolean; // did we auto-pick the bracket from user income?
+  rows: BenchmarkRow[];
+  disclaimer: string;
+};
+
+export async function getBenchmarkComparison(
+  overrideBracket?: IncomeBracket,
+): Promise<BenchmarkResult> {
+  const userId = await requireUser();
+  const now = new Date();
+  const threeMonthsAgo = new Date(now);
+  threeMonthsAgo.setMonth(now.getMonth() - 3);
+
+  // Compute median monthly income + monthly-category expense over last 3 months.
+  const [incomePerMonth, expensePerCat] = await Promise.all([
+    Transaction.aggregate<{ _id: string; total: number }>([
+      {
+        $match: {
+          userId,
+          type: 'credit',
+          date: { $gte: threeMonthsAgo },
+          category: { $nin: EXCLUDE_FROM_TOTALS },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$date' } },
+          total: { $sum: '$amount' },
+        },
+      },
+    ]),
+    Transaction.aggregate<{ _id: string; total: number }>([
+      {
+        $match: {
+          userId,
+          type: 'debit',
+          date: { $gte: threeMonthsAgo },
+          category: { $nin: EXCLUDE_FROM_TOTALS },
+        },
+      },
+      { $group: { _id: '$category', total: { $sum: '$amount' } } },
+    ]),
+  ]);
+
+  const monthlyIncomes = incomePerMonth.map((r) => r.total);
+  const monthlyIncome = median(monthlyIncomes); // ₹/month
+  // For percentages we normalize the 3-month totals to per-month figures.
+  const monthsCovered = Math.max(1, monthlyIncomes.length);
+  const monthlyExpense =
+    expensePerCat.reduce((s, r) => s + r.total, 0) / monthsCovered;
+
+  const detectedFromData = !overrideBracket && monthlyIncome > 0;
+  const bracket = overrideBracket ?? bracketForMonthlyIncome(monthlyIncome);
+  const peerTable = PEER_BENCHMARKS[bracket];
+
+  // Denominator for user's percentages: their own income if we have it,
+  // else their monthly expense (so the chart is still meaningful).
+  const denom = monthlyIncome > 0 ? monthlyIncome : monthlyExpense || 1;
+
+  const userSpendMap = new Map(
+    expensePerCat.map((r) => [r._id, r.total / monthsCovered]),
+  );
+
+  // Build rows for every category the peer table cares about.
+  const rows: BenchmarkRow[] = Object.entries(peerTable)
+    .map(([category, peerPct]) => {
+      const userSpend = userSpendMap.get(category) ?? 0;
+      const userPct = (userSpend / denom) * 100;
+      const delta = userPct - (peerPct ?? 0);
+      const verdict: BenchmarkRow['verdict'] =
+        delta > 3 ? 'above' : delta < -3 ? 'below' : 'on-par';
+      return {
+        category,
+        userPct: Math.round(userPct * 10) / 10,
+        peerPct: peerPct ?? 0,
+        delta: Math.round(delta * 10) / 10,
+        verdict,
+      };
+    })
+    .sort((a, b) => b.peerPct - a.peerPct);
+
+  return {
+    bracket,
+    bracketLabel: bracketLabel(bracket),
+    userMonthlyIncome: monthlyIncome,
+    userMonthlyExpense: monthlyExpense,
+    detectedFromData,
+    rows,
+    disclaimer:
+      'Peer figures are illustrative averages for Indian urban households, based on aggregated public survey data — not live users of this app.',
+  };
+}
+
 /* --------------------------------------------------------- Health score -- */
 
 export type HealthScore = {

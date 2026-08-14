@@ -130,8 +130,16 @@ export async function signupWithOTPAction(formData: FormData): Promise<OTPSignup
 
     return { ok: true, message: 'OTP sent to your email. Please verify to continue.' };
   } catch (error) {
+    // Surface the real SMTP / nodemailer error so misconfigured deployments
+    // show a diagnosable message (e.g. "Invalid login: 535", "Timeout",
+    // "ECONNREFUSED") instead of a generic string that hides the cause.
     console.error('OTP signup error:', error);
-    return { ok: false, error: 'Failed to send OTP. Please try again.' };
+    const detail =
+      error instanceof Error ? error.message : 'Unknown error';
+    return {
+      ok: false,
+      error: `Failed to send OTP — ${detail}`,
+    };
   }
 }
 

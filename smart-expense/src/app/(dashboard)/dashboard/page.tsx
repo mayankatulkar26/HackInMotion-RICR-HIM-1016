@@ -14,6 +14,7 @@ import { listTransactions } from '@/actions/transactions';
 import {
   computeHealthScore,
   detectSubscriptions,
+  detectUpcomingBills,
   generateAiRecommendations,
   listAvailableMonths,
   monthlyTrend,
@@ -34,6 +35,7 @@ import { SpendingPie } from '@/components/charts/spending-pie';
 import { MonthlyTrend } from '@/components/charts/monthly-trend';
 import { InsightCards } from '@/components/dashboard/insight-cards';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
+import { UpcomingBills } from '@/components/dashboard/upcoming-bills';
 import { EmptyState } from '@/components/dashboard/empty-state';
 import { formatCurrency } from '@/lib/utils';
 import { monthLabel, normalizeMonthFilter } from '@/lib/dashboard-filter';
@@ -41,20 +43,24 @@ import { monthLabel, normalizeMonthFilter } from '@/lib/dashboard-filter';
 export default async function DashboardHome() {
   const filterMonth = normalizeMonthFilter((await cookies()).get('smart-expense-month')?.value ?? null);
 
-  const [score, top, trend, subs, spikes, recs, recent, months] = await Promise.all([
-    computeHealthScore({ month: filterMonth }),
-    topCategories(6, filterMonth),
-    monthlyTrend(6, filterMonth),
-    detectSubscriptions(filterMonth),
-    spendingSpikes(filterMonth),
-    generateAiRecommendations(filterMonth),
-    listTransactions({
-      limit: 6,
-      from: filterMonth ? `${filterMonth}-01` : undefined,
-      to: filterMonth ? `${filterMonth}-31` : undefined,
-    }),
-    listAvailableMonths(),
-  ]);
+  const [score, top, trend, subs, spikes, recs, recent, months, upcomingBills] =
+    await Promise.all([
+      computeHealthScore({ month: filterMonth }),
+      topCategories(6, filterMonth),
+      monthlyTrend(6, filterMonth),
+      detectSubscriptions(filterMonth),
+      spendingSpikes(filterMonth),
+      generateAiRecommendations(filterMonth),
+      listTransactions({
+        limit: 6,
+        from: filterMonth ? `${filterMonth}-01` : undefined,
+        to: filterMonth ? `${filterMonth}-31` : undefined,
+      }),
+      listAvailableMonths(),
+      // Bills are inherently forward-looking; ignore the selected-month
+      // filter and always look at the next 30 days from today.
+      detectUpcomingBills(30),
+    ]);
 
   const hasData = score.metrics.income > 0 || score.metrics.expense > 0;
   const saved = score.metrics.income - score.metrics.expense;
@@ -190,6 +196,9 @@ export default async function DashboardHome() {
             spikes={spikes}
             subscriptions={subs}
           />
+
+          {/* Row 2b — Upcoming bills (only render when we actually predicted any) */}
+          {upcomingBills.length > 0 && <UpcomingBills bills={upcomingBills} />}
 
           {/* Row 3 — Charts */}
           <div className="grid gap-4 lg:grid-cols-2">

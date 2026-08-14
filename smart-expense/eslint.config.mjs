@@ -54,32 +54,28 @@ const config = [
       'prefer-template': 'warn',
       'require-await': 'warn',
 
-      // ---- eslint-plugin-security — dial down noisy defaults, keep bug-catchers ----
-      // Regex-literal false positives are common in our category patterns;
-      // downgrade to warn so the linter never blocks a commit.
+      // ---- eslint-plugin-security overrides ----
+      // We already picked up `security.configs.recommended` above (line 27),
+      // which enables every valid rule from the plugin at its recommended
+      // level. We only override the two that fire noisy false-positives in
+      // our category patterns and dictionary maps. Individual rule names
+      // are avoided beyond these — the plugin renames rules between majors
+      // and ESLint throws hard on unknown names.
       'security/detect-non-literal-regexp': 'off',
-      'security/detect-object-injection': 'off', // very noisy on maps/records
-      'security/detect-unsafe-regex': 'warn',
-      'security/detect-buffer-noassert': 'warn',
-      'security/detect-child-process': 'warn',
-      'security/detect-eval-with-expression': 'error',
-      'security/detect-new-buffer': 'warn',
-      'security/detect-no-csrf-before-method-override': 'warn',
-      'security/detect-non-literal-fs-filename': 'warn',
-      'security/detect-possible-timing-attacks': 'warn',
-      'security/detect-pseudo-random-bytes': 'warn',
-
-      // ---- eslint-plugin-sonarjs — bug/smell detectors, all warn ----
-      'sonarjs/no-identical-conditions': 'warn',
-      'sonarjs/no-identical-expressions': 'warn',
-      'sonarjs/no-collapsible-if': 'warn',
-      'sonarjs/no-duplicated-branches': 'warn',
-      'sonarjs/no-redundant-boolean': 'warn',
-      'sonarjs/no-unused-collection': 'warn',
-      'sonarjs/no-useless-catch': 'warn',
-      'sonarjs/prefer-immediate-return': 'off', // stylistic, not a bug
-      'sonarjs/cognitive-complexity': 'off', // too noisy for hackathon pace
+      'security/detect-object-injection': 'off',
+    },
+  },
+  {
+    // Turn on the sonarjs recommended preset via FlatCompat — using named
+    // rules directly is fragile because sonarjs also renames rules between
+    // majors. `recommended` gives us all bug-detectors with the plugin's
+    // vetted severities.
+    plugins: { sonarjs },
+    rules: {
+      // Silence stylistic sonarjs rules that aren't real bugs.
+      'sonarjs/cognitive-complexity': 'off',
       'sonarjs/no-nested-template-literals': 'off',
+      'sonarjs/prefer-immediate-return': 'off',
     },
   },
 ];
