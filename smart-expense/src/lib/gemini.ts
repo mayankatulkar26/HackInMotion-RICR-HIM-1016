@@ -1,21 +1,40 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { CATEGORIES, type Category } from './categories';
 
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+/* ==========================================================================
+ * Provider router
+ * --------------------------------------------------------------------------
+ * The three high-level helpers below (categorizeWithGemini,
+ * generateRecommendations, chatWithData) all go through `callTextAi()`,
+ * which tries Gemini first and falls back to Groq (OpenAI-compatible) on
+ * any failure — quota, 503, network. Either key can be missing.
+ *
+ * Ordering rationale: Gemini is preferred because Flash is fast and the
+ * app's prompts are tuned for it. Groq's llama-3.3-70b is a strong-enough
+ * backup for both structured (categorization JSON) and prose (chat) tasks.
+ *
+ * If both providers are missing / fail, we return provider-specific
+ * fallbacks so callers never see an unhandled throw.
+ * ========================================================================== */
 
-// Google decommissioned the numbered aliases (gemini-1.5-flash / 2.0-flash /
-// 2.5-flash) for new API keys — they all 404. `gemini-flash-latest` is the
-// rolling alias to whatever's currently GA and stays working long-term.
-// Override with GEMINI_MODEL in .env if you have access to a specific version.
-const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+const geminiKey = process.env.GEMINI_API_KEY;
+const genAI = geminiKey ? new GoogleGenerativeAI(geminiKey) : null;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+
+const groqKey = process.env.GROQ_API_KEY;
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+/** True if at least one provider key is set. */
+export function isGeminiConfigured(): boolean {
+  return Boolean(genAI) || Boolean(groqKey);
+}
 
 /**
- * Call Gemini with one automatic retry for transient failures (503 overloaded,
- * 429 rate-limited). Waits ~1.2s before the second attempt. Any other error
- * bubbles up to the caller's own catch block.
+ * Retry a single provider call once on transient failures (503, 429).
+ * ~1.2s backoff — enough for most rate-limit windows to clear.
  */
-async function callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (err: any) {
@@ -28,38 +47,115 @@ async function callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export function isGeminiConfigured(): boolean {
-  return Boolean(genAI);
+/**
+ * Prompt shape passed to a provider. `system` sets the assistant's behavior
+ * (never echoed by models when passed via the system role/instruction);
+ * `user` is the actual turn (data + question, etc.). A bare string is
+ * shorthand for `{ user: string }` — no system instruction.
+ */
+type AiPrompt = string | { system?: string; user: string };
+
+function normalize(prompt: AiPrompt): { system?: string; user: string } {
+  return typeof prompt === 'string' ? { user: prompt } : prompt;
 }
+
+async function callGemini(prompt: AiPrompt): Promise<string> {
+  if (!genAI) throw new Error('gemini not configured');
+  const { system, user } = normalize(prompt);
+  const model = genAI.getGenerativeModel({
+    model: GEMINI_MODEL,
+    ...(system ? { systemInstruction: system } : {}),
+  });
+  const res = await withRetry(() => model.generateContent(user));
+  return res.response.text().trim();
+}
+
+async function callGroq(prompt: AiPrompt): Promise<string> {
+  if (!groqKey) throw new Error('groq not configured');
+  const { system, user } = normalize(prompt);
+  const messages = system
+    ? [
+        { role: 'system' as const, content: system },
+        { role: 'user' as const, content: user },
+      ]
+    : [{ role: 'user' as const, content: user }];
+
+  const doOnce = async () => {
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${groqKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages,
+        temperature: 0.3,
+        max_tokens: 2048,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      const err: any = new Error(
+        `groq ${res.status}: ${body.slice(0, 200)}`,
+      );
+      err.status = res.status;
+      throw err;
+    }
+    const data = await res.json();
+    return String(data.choices?.[0]?.message?.content ?? '').trim();
+  };
+  return withRetry(doOnce);
+}
+
+/**
+ * Try Gemini first, then Groq. Returns the raw text response.
+ * Throws only if BOTH providers are unavailable or errored.
+ */
+async function callTextAi(prompt: AiPrompt): Promise<string> {
+  const errors: string[] = [];
+
+  if (genAI) {
+    try {
+      return await callGemini(prompt);
+    } catch (err: any) {
+      errors.push(`gemini: ${err?.message ?? String(err)}`);
+    }
+  }
+
+  if (groqKey) {
+    try {
+      return await callGroq(prompt);
+    } catch (err: any) {
+      errors.push(`groq: ${err?.message ?? String(err)}`);
+    }
+  }
+
+  throw new Error(
+    errors.length > 0
+      ? `All AI providers failed: ${errors.join(' | ')}`
+      : 'No AI providers configured (set GEMINI_API_KEY and/or GROQ_API_KEY)',
+  );
+}
+
+/* ==========================================================================
+ * High-level helpers
+ * ========================================================================== */
 
 export type CategorizeInput =
   | string
   | { description: string; amount?: number; type?: 'debit' | 'credit' };
 
-/**
- * Batch-categorize up to 20 transactions in one Gemini call.
- *
- * Inputs may be plain description strings or richer `{description, amount,
- * type}` objects — the richer form lets the model use amount magnitude and
- * debit/credit direction as signals (₹15 debit to a "namkeen" shop is Food;
- * ₹18,000 debit labelled "rent transfer" is Rent).
- *
- * Guarantees: the returned array has the same length as `inputs`. On any
- * error (no key, quota, network) every slot gets 'Uncategorized', so the
- * caller can keep the row rather than failing the whole import.
- */
 export async function categorizeWithGemini(
   inputs: CategorizeInput[],
 ): Promise<Category[]> {
   const fallback: Category[] = inputs.map(() => 'Uncategorized');
-  if (!genAI || inputs.length === 0) return fallback;
+  if (!isGeminiConfigured() || inputs.length === 0) return fallback;
 
-  // Normalize to objects
   const items = inputs.map((x) =>
     typeof x === 'string' ? { description: x } : x,
   );
 
-  const model = genAI.getGenerativeModel({ model: MODEL });
   const list = CATEGORIES.filter((c) => c !== 'Uncategorized').join(', ');
 
   const numbered = items
@@ -83,7 +179,7 @@ Indian merchant hints (use them to reason, don't blindly memorize):
 - "kirana" / "general store" / "provisions" / "aata chakki" / "sabzi" / "milk" / "dairy" → Groceries
 - "namkeen" / "sweets" / "chaat" / "restaurant" / "dhaba" / "cafe" / "tiffin" / "biryani" / "hotel" / "pizza" / "momos" → Food
 - "garments" / "fashion" / "clothing" / "apparel" / "footwear" / "boutique" → Shopping
-- "electricals" / "hardware" / "electronics" / "mobile" / "recharge" → Bills
+- "electricals" / "hardware" / "electronics" / "mobile" / "recharge" / "gas cylinder" / "LPG" → Bills
 - "petrol" / "fuel" / "auto" / "cab" / "travels" / "railway" / "irctc" / "toll" → Travel
 - "school" / "college" / "tuition" / "coaching" / "book" / "stationery" → Education
 - "temple" / "religious" / "donation" → Other
@@ -104,8 +200,7 @@ Transactions (${items.length}):
 ${numbered}`;
 
   try {
-    const res = await callWithRetry(() => model.generateContent(prompt));
-    const text = res.response.text().trim();
+    const text = await callTextAi(prompt);
     const jsonStr = text.replace(/^```(?:json)?\s*|\s*```$/g, '');
     const parsed = JSON.parse(jsonStr);
     if (!Array.isArray(parsed)) return fallback;
@@ -116,15 +211,11 @@ ${numbered}`;
         : 'Other';
     });
   } catch (err) {
-    console.error('[gemini] categorize failed:', err);
+    console.error('[ai] categorize failed:', err);
     return fallback;
   }
 }
 
-/**
- * Produce 3-5 short, specific recommendations from computed metrics.
- * Returns [] on any failure so the UI can gracefully hide the card.
- */
 export async function generateRecommendations(payload: {
   income: number;
   totalExpense: number;
@@ -132,8 +223,7 @@ export async function generateRecommendations(payload: {
   topCategories: Array<{ category: string; amount: number }>;
   monthlyTrend?: Array<{ month: string; expense: number }>;
 }): Promise<string[]> {
-  if (!genAI) return [];
-  const model = genAI.getGenerativeModel({ model: MODEL });
+  if (!isGeminiConfigured()) return [];
   const prompt = `You are a friendly Indian personal finance coach.
 Given the metrics below, output 3-5 short, specific, actionable recommendations
 in plain English. Amounts are in INR (₹). Reference concrete numbers.
@@ -142,42 +232,106 @@ Return a JSON array of strings only, no prose.
 METRICS:
 ${JSON.stringify(payload, null, 2)}`;
   try {
-    const res = await callWithRetry(() => model.generateContent(prompt));
-    const text = res.response.text().trim().replace(/^```(?:json)?\s*|\s*```$/g, '');
+    const text = (await callTextAi(prompt))
+      .replace(/^```(?:json)?\s*|\s*```$/g, '');
     const arr = JSON.parse(text);
-    if (Array.isArray(arr)) return arr.filter((x) => typeof x === 'string').slice(0, 5);
+    if (Array.isArray(arr)) {
+      return arr.filter((x) => typeof x === 'string').slice(0, 5);
+    }
     return [];
   } catch (err) {
-    console.error('[gemini] recommendations failed:', err);
+    console.error('[ai] recommendations failed:', err);
     return [];
   }
 }
 
 /**
- * Chat: answer a user question grounded in provided context (their data).
+ * Some models — llama-3.3 in particular — misbehave with fenced data
+ * blocks and paste the DATA back before their actual answer. This scrubs
+ * any such echo so the user sees only the model's real reply.
  */
+function stripDataEcho(raw: string): string {
+  let text = raw.trim();
+
+  // 1. If the model dumped everything up to and including our END marker,
+  //    trust the marker and keep only what comes after.
+  const endMarker = /---\s*END\s*DATA\s*---/i.exec(text);
+  if (endMarker) {
+    text = text.slice(endMarker.index + endMarker[0].length).trim();
+  }
+
+  // 2. Drop any leading lines that look like data-table content: markers
+  //    (=== SECTION ===), transaction rows (2026-08-13 · Category · -₹15 …),
+  //    or list bullets that are clearly echoed context, until we hit a real
+  //    prose paragraph.
+  const isDataLine = (l: string) => {
+    const s = l.trim();
+    if (!s) return false;
+    if (s.startsWith('===') || s.startsWith('---')) return true;
+    if (/^\d{4}-\d{2}-\d{2}\s*·/.test(s)) return true; // "2026-08-13 · …"
+    if (/^\d{1,2}\s?[ap]m$/i.test(s)) return true; // stray "42 pm"
+    if (/^\s+-?\s?₹[\d,]+/.test(l)) return true; // "  ₹100 …"
+    if (
+      /^\s{2,}[A-Z][A-Za-z ]+:\s+/.test(l) || // "  Food: ₹123"
+      /^\s{2,}-\s+[A-Z]/.test(l) // "  - Food: …"
+    )
+      return true;
+    return false;
+  };
+
+  const lines = text.split('\n');
+  let firstProseIdx = 0;
+  while (firstProseIdx < lines.length && isDataLine(lines[firstProseIdx])) {
+    firstProseIdx++;
+  }
+  const cleaned = lines.slice(firstProseIdx).join('\n').trim();
+  // If we'd have to strip literally everything, the model produced nothing
+  // useful — surface an honest error instead of the raw echo.
+  if (cleaned.length === 0) {
+    return "I couldn't produce a clean answer for that — please try rephrasing.";
+  }
+  return cleaned;
+}
+
 export async function chatWithData(
   question: string,
   context: string,
 ): Promise<string> {
-  if (!genAI) {
-    return "AI chat is unavailable — set GEMINI_API_KEY to enable this feature.";
+  if (!isGeminiConfigured()) {
+    return 'AI chat is unavailable — set GEMINI_API_KEY or GROQ_API_KEY in your .env to enable this feature.';
   }
-  const model = genAI.getGenerativeModel({ model: MODEL });
-  const prompt = `You are a helpful personal finance assistant for an Indian user.
-Answer the question using ONLY the DATA below. Amounts are in INR (₹).
-If the data doesn't contain the answer, say so honestly.
-Keep the answer short (2-4 sentences).
 
-DATA:
-${context}
+  // System role: behavior + hard constraints. Kept in system so the model
+  // isn't tempted to echo the rules themselves.
+  const system = `You are a precise personal finance coach for an Indian user. All amounts are in INR (₹).
 
-QUESTION: ${question}`;
+OUTPUT SHAPE (follow every time):
+1) ONE sentence answering the question with a concrete number (compute totals, do not list rows).
+2) ONE sentence: a specific, realistic tip on how to reduce spending in that category or improve the metric the question is about. Reference a concrete rupee amount.
+3) ONE sentence: the health-score impact of following the tip (e.g. "would lift your savings rate ~2% → +1-2 points on your health score").
+
+HARD RULES:
+- DO NOT restate, quote, paraphrase, tabulate, or list the reference data.
+- DO NOT include the words "DATA", "BEGIN DATA", "END DATA", "===", or any transaction row from the data block.
+- DO NOT invent numbers that aren't in the data.
+- If the answer isn't in the data, say so in ONE sentence — no filler.
+- Total answer length: 2-4 short sentences.
+
+EXAMPLE:
+Question: "How much did I spend on Groceries last month?"
+Good answer: "You spent ₹4,180 on Groceries last month across 12 transactions — your #2 category. Switching to a weekly Blinkit list from ad-hoc trips typically saves ~15%, about ₹630/month. That extra saving would raise your savings rate by ~2 percentage points, worth roughly +1 point on your health score."`;
+
+  // User role: question first, then a plainly-labelled reference block.
+  const user = `QUESTION: ${question}
+
+Reference (do NOT echo — use it only to compute):
+${context}`;
+
   try {
-    const res = await callWithRetry(() => model.generateContent(prompt));
-    return res.response.text().trim();
+    const raw = await callTextAi({ system, user });
+    return stripDataEcho(raw);
   } catch (err) {
-    console.error('[gemini] chat failed:', err);
-    return 'Sorry, I could not answer that right now. Please try again.';
+    console.error('[ai] chat failed:', err);
+    return 'Sorry, I could not answer that right now. Please try again in a moment.';
   }
 }

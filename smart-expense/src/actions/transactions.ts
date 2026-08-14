@@ -17,6 +17,7 @@ import { CATEGORIES } from '@/lib/categories';
 import {
   extractMerchantKey,
   ruleBasedCategorize,
+  smartFallback,
 } from '@/lib/categorizer';
 import { categorizeWithGemini, isGeminiConfigured } from '@/lib/gemini';
 import { dedupeHash, type ParsedRow } from '@/lib/csv';
@@ -76,12 +77,66 @@ export async function deleteTransaction(id: string) {
   return { ok: true as const };
 }
 
+/**
+ * Change a single transaction's category. Used by the inline category
+ * dropdown on the transactions table — no confirmation, single write.
+ * We also cache the merchant → category mapping so future imports of the
+ * same merchant land correctly without needing another AI call.
+ */
+const updateCategorySchema = z.object({
+  id: z.string().min(1),
+  category: z.enum(CATEGORIES),
+});
+
+export async function updateTransactionCategory(
+  id: string,
+  category: string,
+): Promise<{ ok: true }> {
+  const userId = await requireUser();
+  const parsed = updateCategorySchema.parse({ id, category });
+
+  const tx = await Transaction.findOne({
+    _id: parsed.id,
+    userId,
+  })
+    .select({ merchantName: 1 })
+    .lean();
+
+  await Transaction.updateOne(
+    { _id: parsed.id, userId },
+    { $set: { category: parsed.category } },
+  );
+
+  // Teach the merchant cache from this manual correction — so the next time
+  // this merchant hits an import, rules-then-cache produces the right answer
+  // without spending a Gemini call.
+  if (tx?.merchantName) {
+    try {
+      await MerchantCache.updateOne(
+        { merchantKey: tx.merchantName },
+        { $set: { category: parsed.category } },
+        { upsert: true },
+      );
+    } catch {
+      // Duplicate key from concurrent write — safe to ignore.
+    }
+  }
+
+  revalidatePath('/dashboard');
+  revalidatePath('/transactions');
+  return { ok: true };
+}
+
 export type ImportSummary = {
   inserted: number;
   skippedDuplicates: number;
   skippedInvalid: number;
   categorizedByRule: number;
   categorizedByAI: number;
+  /** Rows that made it through rule + AI without a label — assigned by the
+   * deterministic fallback (keyword hints + amount bands). Always > 0
+   * means "no Gemini key" or "Gemini was down"; a small trickle is normal. */
+  categorizedByFallback: number;
 };
 
 /**
@@ -106,6 +161,7 @@ export async function importTransactions(
     skippedInvalid: 0,
     categorizedByRule: 0,
     categorizedByAI: 0,
+    categorizedByFallback: 0,
   };
   let batchId: mongoose.Types.ObjectId | null = null;
 
@@ -235,6 +291,15 @@ export async function importTransactions(
           }
         }
       }
+    }
+  }
+
+  // Step 4.5: deterministic fallback — no row should reach the DB as
+  // 'Uncategorized'. Fires for rows the rules + AI both couldn't label.
+  for (const s of staged) {
+    if (s.category === 'Uncategorized') {
+      s.category = smartFallback(s.description, s.amount, s.type);
+      summary.categorizedByFallback++;
     }
   }
 
@@ -373,6 +438,7 @@ export async function recategorizeAllTransactions(): Promise<{
   scanned: number;
   updatedByRule: number;
   updatedByAI: number;
+  updatedByFallback: number;
 }> {
   const userId = await requireUser();
   // Pull amount + type too so Gemini has the same context as during import.
@@ -381,7 +447,7 @@ export async function recategorizeAllTransactions(): Promise<{
     .lean();
 
   if (all.length === 0) {
-    return { scanned: 0, updatedByRule: 0, updatedByAI: 0 };
+    return { scanned: 0, updatedByRule: 0, updatedByAI: 0, updatedByFallback: 0 };
   }
 
   // Warm the merchant cache once
@@ -488,6 +554,31 @@ export async function recategorizeAllTransactions(): Promise<{
     }
   }
 
+  // Deterministic fallback: anything still Uncategorized after rules/cache/AI
+  // gets a reasonable label. Refetch since we've been writing.
+  const stillUncat = await Transaction.find({
+    userId,
+    category: 'Uncategorized',
+  })
+    .select({ description: 1, amount: 1, type: 1 })
+    .lean();
+
+  let updatedByFallback = 0;
+  if (stillUncat.length > 0) {
+    const fbBulk = stillUncat.map((t) => ({
+      updateOne: {
+        filter: { _id: t._id },
+        update: {
+          $set: {
+            category: smartFallback(t.description, t.amount, t.type),
+          },
+        },
+      },
+    })) as any;
+    await Transaction.bulkWrite(fbBulk);
+    updatedByFallback = stillUncat.length;
+  }
+
   revalidatePath('/dashboard');
   revalidatePath('/transactions');
   revalidatePath('/insights');
@@ -495,6 +586,7 @@ export async function recategorizeAllTransactions(): Promise<{
     scanned: all.length,
     updatedByRule: ruleUpdates.length,
     updatedByAI,
+    updatedByFallback,
   };
 }
 

@@ -115,13 +115,22 @@ export function StatementsView({ batches, manualCount, all }: Props) {
     startRecatTransition(async () => {
       try {
         const res = await recategorizeAllTransactions();
-        const changed = res.updatedByRule + res.updatedByAI;
+        const changed =
+          res.updatedByRule + res.updatedByAI + res.updatedByFallback;
         if (changed === 0) {
           toast.info(`Scanned ${res.scanned} — nothing to change.`);
         } else {
-          toast.success(
-            `Re-categorized ${changed} of ${res.scanned} · ${res.updatedByRule} by rules, ${res.updatedByAI} by AI`,
-          );
+          toast.success(`Re-categorized ${changed} of ${res.scanned}`, {
+            description: [
+              `${res.updatedByRule} by rules`,
+              `${res.updatedByAI} by AI`,
+              res.updatedByFallback > 0 &&
+                `${res.updatedByFallback} by smart fallback`,
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            duration: 6000,
+          });
         }
       } catch {
         toast.error('Re-categorize failed');
