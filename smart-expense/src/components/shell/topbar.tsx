@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOutAction } from '@/actions/auth';
+import { SessionManager } from '@/lib/session-manager';
 import { cn, formatCurrency } from '@/lib/utils';
 
 const NAV = [
@@ -158,6 +159,7 @@ export function Topbar({ user, goals = [] }: Props) {
             onSubmit={async (event) => {
               event.preventDefault();
               await signOutAction();
+              SessionManager.clearAllSessions();
               toast.success('Sign out successfully');
               router.push('/');
             }}
