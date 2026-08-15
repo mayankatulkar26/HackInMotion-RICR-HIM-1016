@@ -1,23 +1,12 @@
 import nodemailer from 'nodemailer';
 
 /**
- * Email sender with two providers:
+ * Email sender for OTP verification.
  *
- *   1. **Resend (HTTPS)** — preferred. Works on every serverless host
- *      (Vercel, Render free, Netlify, Cloudflare) because it goes over
- *      HTTPS, not raw SMTP. Set RESEND_API_KEY to enable.
- *   2. **SMTP (nodemailer)** — fallback for anyone who has open SMTP egress.
- *      Uses SMTP_HOST/PORT/SECURE/USER/PASS.
- *
- * At least one must be configured. Selection is silent: whichever key is
- * present wins; if both are set, Resend goes first and SMTP is the fallback.
+ * This project is currently using SMTP via Nodemailer only.
+ * Resend is disabled for now to keep the setup simple and use the
+ * existing Gmail SMTP credentials already configured in the app.
  */
-
-const RESEND_URL = 'https://api.resend.com/emails';
-const RESEND_KEY = process.env.RESEND_API_KEY;
-// Default "from" is Resend's sandbox address; works out of the box without
-// domain verification. Set RESEND_FROM to a verified sender for production.
-const RESEND_FROM = process.env.RESEND_FROM || 'Wealth Sight <onboarding@resend.dev>';
 
 // Timeouts are intentionally tight — serverless functions get killed by the
 // host at ~15-30s, so fail fast and surface the real error instead of
@@ -38,39 +27,10 @@ const smtpTransporter =
       })
     : null;
 
-if (!RESEND_KEY && !smtpTransporter) {
+if (!smtpTransporter) {
   console.warn(
-    '⚠️  No email provider configured. Set RESEND_API_KEY (recommended) or SMTP_USER + SMTP_PASS.',
+    '⚠️  No SMTP email provider configured. Set SMTP_USER and SMTP_PASS to enable OTP emails.',
   );
-}
-
-/* ---------------------------------------------------- Provider: Resend ---- */
-
-async function sendViaResend(
-  to: string,
-  subject: string,
-  html: string,
-): Promise<void> {
-  if (!RESEND_KEY) throw new Error('resend not configured');
-  const res = await fetch(RESEND_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${RESEND_KEY}`,
-    },
-    body: JSON.stringify({
-      from: RESEND_FROM,
-      to: [to],
-      subject,
-      html,
-    }),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(
-      `Resend ${res.status}: ${body.slice(0, 200) || res.statusText}`,
-    );
-  }
 }
 
 /* -------------------------------------------------- Provider: SMTP (nodemailer) */
@@ -115,34 +75,22 @@ export async function sendOTPEmail(
 ): Promise<boolean> {
   const subject = 'Your Wealth Sight OTP Verification Code';
   const html = OTP_TEMPLATE(otp, name);
-  const errors: string[] = [];
 
-  if (RESEND_KEY) {
-    try {
-      await sendViaResend(email, subject, html);
-      console.log('✅ OTP email sent via Resend');
-      return true;
-    } catch (err: any) {
-      errors.push(`resend: ${err?.message ?? String(err)}`);
-    }
+  if (!smtpTransporter) {
+    const detail = 'SMTP not configured (set SMTP_USER and SMTP_PASS)';
+    console.error('❌ OTP email failed:', detail);
+    throw new Error(`Failed to send OTP: ${detail}`);
   }
 
-  if (smtpTransporter) {
-    try {
-      await sendViaSmtp(email, subject, html);
-      console.log('✅ OTP email sent via SMTP');
-      return true;
-    } catch (err: any) {
-      errors.push(`smtp: ${err?.message ?? String(err)}`);
-    }
+  try {
+    await sendViaSmtp(email, subject, html);
+    console.log('✅ OTP email sent via SMTP');
+    return true;
+  } catch (err: any) {
+    const detail = err?.message ?? String(err);
+    console.error('❌ OTP email failed:', detail);
+    throw new Error(`Failed to send OTP: ${detail}`);
   }
-
-  const detail =
-    errors.length > 0
-      ? errors.join(' | ')
-      : 'no email provider configured (set RESEND_API_KEY or SMTP_USER + SMTP_PASS)';
-  console.error('❌ OTP email failed:', detail);
-  throw new Error(`Failed to send OTP: ${detail}`);
 }
 
 // Generate a random OTP
