@@ -1,52 +1,58 @@
-import nodemailer from 'nodemailer';
-
 /**
  * Email sender for OTP verification.
  *
- * This project is currently using SMTP via Nodemailer only.
- * Resend is disabled for now to keep the setup simple and use the
- * existing Gmail SMTP credentials already configured in the app.
+ * Uses Brevo's HTTP API instead of SMTP.
+ * This keeps the setup simple and avoids nodemailer.
  */
 
-// Timeouts are intentionally tight — serverless functions get killed by the
-// host at ~15-30s, so fail fast and surface the real error instead of
-// letting the platform SIGKILL us mid-request.
-const smtpTransporter =
-  process.env.SMTP_USER && process.env.SMTP_PASS
-    ? nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-        connectionTimeout: 10_000,
-        greetingTimeout: 10_000,
-        socketTimeout: 10_000,
-      })
-    : null;
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const BREVO_FROM = process.env.BREVO_FROM || 'Wealth Sight <no-reply@yourdomain.com>';
 
-if (!smtpTransporter) {
-  console.warn(
-    '⚠️  No SMTP email provider configured. Set SMTP_USER and SMTP_PASS to enable OTP emails.',
-  );
+function parseSender(from: string): { email: string; name: string } {
+  const match = from.match(/^(.+?)\s*<(.+)>$/);
+  if (match) {
+    return { name: match[1].trim(), email: match[2].trim() };
+  }
+
+  return { name: 'Wealth Sight', email: from.trim() };
 }
 
-/* -------------------------------------------------- Provider: SMTP (nodemailer) */
-
-async function sendViaSmtp(
+async function sendViaBrevo(
   to: string,
   subject: string,
   html: string,
+  name: string,
 ): Promise<void> {
-  if (!smtpTransporter) throw new Error('SMTP not configured');
-  await smtpTransporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER!,
-    to,
-    subject,
-    html,
+  if (!BREVO_API_KEY) throw new Error('Brevo API key not configured');
+
+  const sender = parseSender(BREVO_FROM);
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: sender.name,
+        email: sender.email,
+      },
+      to: [
+        {
+          email: to,
+          name,
+        },
+      ],
+      subject,
+      htmlContent: html,
+    }),
   });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Brevo ${res.status}: ${body.slice(0, 200) || res.statusText}`);
+  }
 }
 
 /* ---------------------------------------------------- Public API --------- */
@@ -76,15 +82,15 @@ export async function sendOTPEmail(
   const subject = 'Your Wealth Sight OTP Verification Code';
   const html = OTP_TEMPLATE(otp, name);
 
-  if (!smtpTransporter) {
-    const detail = 'SMTP not configured (set SMTP_USER and SMTP_PASS)';
+  if (!BREVO_API_KEY) {
+    const detail = 'Brevo API key not configured';
     console.error('❌ OTP email failed:', detail);
     throw new Error(`Failed to send OTP: ${detail}`);
   }
 
   try {
-    await sendViaSmtp(email, subject, html);
-    console.log('✅ OTP email sent via SMTP');
+    await sendViaBrevo(email, subject, html, name);
+    console.log('✅ OTP email sent via Brevo');
     return true;
   } catch (err: any) {
     const detail = err?.message ?? String(err);
