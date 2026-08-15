@@ -2,11 +2,9 @@
 
 ### AI-Powered Personal Finance & Financial Health Dashboard
 
-Wealth Sight is a smart finance management web application built for the **Hack In Motion – FinTech** challenge.
+Wealth Sight is an AI-powered personal finance web application built for the **Hack In Motion – RICR FinTech Challenge**.
 
-The idea is simple: instead of manually checking every transaction and trying to understand where your money goes, Wealth Sight brings everything into one dashboard.
-
-You can add your transactions, upload statement files, track spending, manage budgets and savings goals, and use AI-powered insights to better understand your financial habits.
+The goal is simple: instead of manually checking transactions and trying to understand where money goes, Wealth Sight turns financial data into clear insights, spending analysis, budgets, savings goals and personalized recommendations.
 
 ---
 
@@ -14,157 +12,113 @@ You can add your transactions, upload statement files, track spending, manage bu
 
 Wealth Sight helps users:
 
-* 📊 View their overall financial health
+* 📊 Understand their overall financial health
 * 💳 Track income and expenses
-* 📁 Import transaction data from files
-* 🏷️ Categorize transactions automatically
-* 💰 Create and track budgets
-* 🎯 Set savings goals
-* 📈 Understand spending patterns
-* 🤖 Get AI-powered financial insights
-* 💬 Interact with an AI finance assistant
-* 🔐 Secure their account with authentication
-
-The dashboard is designed to make personal finance easier to understand instead of showing users a lot of confusing numbers.
+* 📁 Import transactions from CSV, Excel and financial statements
+* 🏷️ Automatically categorize transactions
+* 💰 Manage budgets
+* 🎯 Create savings goals
+* 📈 Analyze spending patterns
+* 🤖 Generate AI-powered financial insights
+* 💬 Chat with an AI finance assistant
+* 🧾 Track upcoming bills
+* 📊 Compare financial behavior with benchmark data
+* 🔐 Secure accounts with authentication and OTP verification
 
 ---
 
-## ✨ Main Features
+# ✨ Main Features
 
-### 🔐 Authentication
+## 🔐 Authentication & OTP Verification
 
-Users can create an account and securely log in.
+Users can securely create accounts and access their dashboard.
 
-* Login / Signup
-* Password protection
+Features include:
+
+* Login and signup
+* Password hashing
 * NextAuth authentication
 * Protected dashboard routes
+* OTP-based signup verification
+* OTP-based password recovery
+* Server-side validation
+
+### 📧 Email Verification
+
+The email system was recently updated for better deployment compatibility.
+
+The latest implementation uses the **Brevo HTTP API** instead of SMTP/Nodemailer for OTP delivery.
+
+This avoids common SMTP connection problems on cloud/serverless deployments.
+
+Current configuration uses:
+
+```env
+BREVO_API_KEY=your_brevo_api_key
+BREVO_FROM=Wealth Sight <your-verified-email@example.com>
+```
 
 ---
 
-### 📊 Financial Dashboard
+# 📊 Financial Dashboard
 
-The main dashboard gives a quick overview of your money.
+The dashboard provides a complete overview of the user's financial activity.
 
 It includes:
 
-* Income
-* Expenses
-* Balance
-* Spending overview
+* Total income
+* Total expenses
+* Current balance
+* Spending summary
 * Recent transactions
 * Financial health information
 * Month-based filtering
+* Spending visualizations
+* Upcoming bills
+* Quick financial indicators
 
-The dashboard also updates based on the selected time period.
+The dashboard dynamically updates according to the selected period.
 
 ---
 
-### 💳 Transaction Management
+# 💳 Transaction Management
 
-Users can manage their transactions directly from the application.
+Users can manage financial transactions from a dedicated transactions section.
 
-Supported operations include:
+Supported functionality includes:
 
 * Add transactions manually
+* Edit transaction information
 * View transactions
 * Search transactions
 * Filter transactions
 * Categorize transactions
-* Track income and expenses
+* Track income
+* Track expenses
+* View transaction statistics
+
+The transaction interface has also been improved for better usability and responsive layouts.
 
 ---
 
-### 📂 Transaction Import
+# 📂 Statement & File Import
 
-Instead of entering everything manually, users can import transaction data from files.
+Users can import existing financial data instead of entering every transaction manually.
 
-The project includes support for processing:
+Supported formats include:
 
-* CSV files
-* Excel/XLSX data
+* CSV
+* Excel / XLSX
 * Financial statement data
+* PDF statement processing
 
-This makes it easier to move existing banking data into Wealth Sight.
-
----
-
-### 🤖 AI Transaction Categorization
-
-Wealth Sight uses a hybrid approach for transaction categorization.
-
-First, known transaction patterns and merchant names are checked.
-
-If the transaction cannot be confidently categorized, AI can be used to classify it.
-
-The project supports:
-
-* Google Gemini
-* Groq as an AI fallback
-
-This allows the application to continue working even when one AI provider is unavailable.
+The transaction import system processes the uploaded data and converts it into structured transactions.
 
 ---
 
-### 💡 AI Financial Insights
+# 🤖 AI Transaction Categorization
 
-The application can use transaction data to generate useful financial insights.
-
-Examples include:
-
-* Spending patterns
-* Unusual spending
-* High-spending categories
-* Financial behavior
-* Personalized suggestions
-
-The goal is not just to show data, but to explain what the data means.
-
----
-
-### 💬 AI Finance Assistant
-
-Wealth Sight also includes an AI chat experience designed around personal finance.
-
-Users can ask questions about their spending and financial data and get AI-generated responses.
-
-For example:
-
-> "Where am I spending the most?"
-
-> "How can I reduce my monthly expenses?"
-
-> "How much should I save?"
-
----
-
-### 💰 Budget Management
-
-Users can create budgets for different spending categories.
-
-The dashboard helps track progress using visual indicators so users can quickly see whether they are within their planned spending limits.
-
----
-
-### 🎯 Savings Goals
-
-Users can create savings goals and monitor their progress.
-
-For example:
-
-* New phone
-* Laptop
-* Emergency fund
-* Travel
-* Personal goals
-
-Each goal can be tracked over time.
-
----
-
-## 🧠 How The AI System Works
-
-The application follows a simple fallback strategy:
+Wealth Sight uses a hybrid categorization system.
 
 ```text
 Transaction
@@ -177,44 +131,286 @@ Known Category?
  ↓            ↓
 Category    Gemini AI
               ↓
-          If Gemini fails
+        If Gemini fails
               ↓
-          Groq Fallback
+         Groq Fallback
               ↓
             Result
 ```
 
-This approach helps reduce unnecessary AI requests while still allowing the system to handle unfamiliar transactions.
+The system first tries to identify common merchants and transaction patterns.
+
+For unknown transactions, AI classification can be used.
+
+### Supported AI Providers
+
+* Google Gemini
+* Groq
+
+Gemini is preferred while Groq can be used as an automatic fallback.
 
 ---
 
-## 🛠️ Tech Stack
+# 💡 AI Financial Insights
 
-| Technology      | Purpose                  |
-| --------------- | ------------------------ |
-| Next.js 15      | Full-stack web framework |
-| React           | Frontend UI              |
-| TypeScript      | Type safety              |
-| Tailwind CSS    | Styling                  |
-| MongoDB         | Database                 |
-| Mongoose        | MongoDB object modeling  |
-| NextAuth        | Authentication           |
-| Google Gemini   | AI features              |
-| Groq            | AI fallback              |
-| Recharts        | Data visualization       |
-| Framer Motion   | UI animations            |
-| Radix UI        | UI primitives            |
-| React Hook Form | Forms                    |
-| Zod             | Validation               |
-| PapaParse       | CSV processing           |
-| XLSX            | Excel file processing    |
-| Nodemailer      | Email functionality      |
+Wealth Sight analyzes transaction data to generate personalized financial insights.
 
-The repository's current dependency setup confirms the main framework, database, AI, charting, file-processing, authentication and UI libraries listed above.
+Examples include:
+
+* High spending categories
+* Spending patterns
+* Unusual spending
+* Financial behavior analysis
+* Personalized recommendations
+* Savings suggestions
+* Expense reduction opportunities
+
+The objective is to transform raw transaction data into understandable financial information.
 
 ---
 
-## 📁 Project Structure
+# 💬 AI Finance Assistant
+
+The application includes an AI-powered finance assistant.
+
+Users can ask questions about their financial activity, such as:
+
+> Where am I spending the most?
+
+> How can I reduce my monthly expenses?
+
+> How much should I save?
+
+> Which category is increasing my expenses?
+
+The assistant can use the user's financial context to provide relevant answers.
+
+### 🆕 Chat History
+
+Recent development added **AI chat history**.
+
+Users can now maintain previous conversations instead of starting from an empty chat every time.
+
+---
+
+# 💰 Budget Management
+
+Users can create spending budgets for different categories.
+
+The application provides visual progress indicators to help users understand:
+
+* Planned spending
+* Current spending
+* Remaining budget
+* Budget utilization
+
+This makes it easier to identify categories where spending is getting too high.
+
+---
+
+# 🎯 Savings Goals
+
+Users can create personalized savings goals.
+
+Examples:
+
+* Laptop
+* Smartphone
+* Emergency fund
+* Travel
+* Education
+* Personal purchases
+
+Each goal can be tracked over time.
+
+The savings simulator also helps users understand how changing their savings behavior can affect goal progress.
+
+---
+
+# 🧾 Upcoming Bills
+
+A new **Upcoming Bills** component has been added to the dashboard.
+
+It helps users keep track of expected payments and upcoming financial obligations.
+
+This gives users a better view of future cash requirements instead of only looking at historical transactions.
+
+---
+
+# 📊 Financial Benchmark Comparison
+
+Wealth Sight now includes a **Benchmark Comparison** feature.
+
+Users can compare their spending behavior against benchmark financial data.
+
+The benchmark system helps answer questions such as:
+
+* Is my spending unusually high?
+* Which category is consuming more than expected?
+* How does my spending compare with a reference level?
+* Where should I improve?
+
+The application includes dedicated benchmark logic and a visual comparison interface.
+
+---
+
+# 📈 Financial Analysis
+
+The application now contains a dedicated financial analysis system for calculating and processing financial information.
+
+Analysis can include:
+
+* Income and expense trends
+* Category-level spending
+* Spending distribution
+* Financial health indicators
+* Benchmark comparisons
+* Savings analysis
+* Financial recommendations
+
+---
+
+# 📱 Responsive & Mobile UI
+
+The UI has been improved for mobile devices.
+
+Recent changes include:
+
+* Mobile-friendly layouts
+* Responsive dashboard components
+* Improved transaction pages
+* Better top navigation behavior
+* Improved spacing on smaller screens
+* Responsive insights and analytics sections
+
+The application is designed to work across desktop, tablet and mobile screen sizes.
+
+---
+
+# 🔒 Security Improvements
+
+Recent development also added security-focused improvements.
+
+These include:
+
+* ESLint security rules
+* SonarJS linting
+* Next.js security headers
+* Improved validation
+* Safer server-side operations
+* Better handling of application configuration
+
+The project also includes automated development checks through linting and type checking.
+
+---
+
+# ⚡ Deployment Improvements
+
+The project has gone through several deployment-focused fixes.
+
+Recent work included:
+
+* Fixes for production signup failures
+* Railway deployment compatibility changes
+* Cloud deployment configuration improvements
+* Email provider migration away from SMTP
+* Environment variable cleanup
+* Production authentication fixes
+
+The application is currently designed to work in a deployed environment rather than only locally.
+
+---
+
+# 🧠 Recent Development Updates
+
+The latest development history includes the following major changes:
+
+### Email Verification
+
+* Replaced SMTP/Nodemailer OTP delivery with Brevo HTTP API
+* Added Brevo sender configuration
+* Improved OTP error handling
+
+### Financial Analysis
+
+* Added a dedicated financial analysis action
+* Added additional financial calculations and insights
+
+### Benchmark Comparison
+
+* Added benchmark financial data
+* Added benchmark comparison logic
+* Added visual benchmark comparison UI
+
+### Upcoming Bills
+
+* Added upcoming bills dashboard component
+
+### AI Chat
+
+* Added AI chat history
+* Improved AI provider routing
+* Added retry/provider fallback improvements
+
+### Dashboard & Insights
+
+* Improved dashboard calculations
+* Updated financial insights UI
+* Improved savings simulator
+* Added benchmark visualization
+
+### Transactions
+
+* Improved CSV uploader
+* Improved statement view
+* Improved transaction form
+* Improved transaction table
+* Added transaction tab utility
+
+### UI
+
+* Updated top navigation
+* Improved mobile layouts
+* Improved transition page
+* Updated responsive behavior
+
+### Deployment & Production
+
+* Fixed deployed signup issues
+* Added Railway deployment fixes
+* Improved production environment configuration
+
+---
+
+# 🛠️ Tech Stack
+
+| Technology      | Purpose                        |
+| --------------- | ------------------------------ |
+| Next.js 15      | Full-stack web framework       |
+| React           | Frontend UI                    |
+| TypeScript      | Type safety                    |
+| Tailwind CSS    | Styling                        |
+| MongoDB         | Database                       |
+| Mongoose        | MongoDB object modeling        |
+| NextAuth        | Authentication                 |
+| Google Gemini   | Primary AI provider            |
+| Groq            | AI fallback provider           |
+| Brevo API       | OTP email delivery             |
+| Recharts        | Data visualization             |
+| Framer Motion   | UI animations                  |
+| Radix UI        | UI primitives                  |
+| React Hook Form | Form handling                  |
+| Zod             | Validation                     |
+| PapaParse       | CSV processing                 |
+| XLSX            | Excel processing               |
+| unpdf           | PDF statement processing       |
+| bcryptjs        | Password hashing               |
+| ESLint Security | Security linting               |
+| SonarJS         | Code quality/security analysis |
+
+---
+
+# 📁 Project Structure
 
 ```text
 smart-expense/
@@ -235,6 +431,8 @@ smart-expense/
 │   │   └── api/
 │   │
 │   ├── actions/
+│   │   ├── analysis.ts
+│   │   ├── auth.ts
 │   │   ├── dashboard.ts
 │   │   ├── transactions.ts
 │   │   ├── budgets.ts
@@ -244,13 +442,18 @@ smart-expense/
 │   │   ├── auth/
 │   │   ├── dashboard/
 │   │   ├── transactions/
-│   │   ├── budgets/
+│   │   ├── insights/
 │   │   ├── charts/
+│   │   ├── shell/
 │   │   └── ui/
 │   │
 │   ├── db/
 │   │
 │   └── lib/
+│       ├── benchmarks.ts
+│       ├── email.ts
+│       ├── transactions-tab.ts
+│       └── ...
 │
 ├── public/
 ├── scripts/
@@ -259,181 +462,208 @@ smart-expense/
 └── README.md
 ```
 
-The repository currently includes dashboard server actions and dedicated dashboard/transaction components, matching this application structure.
-
 ---
 
-## ⚙️ Getting Started
+# ⚙️ Getting Started
 
-### 1. Clone the repository
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/mayankatulkar26/HackInMotion-RICR-HIM-1016.git
 ```
 
-### 2. Enter the project
+## 2. Enter the Project
 
 ```bash
 cd HackInMotion-RICR-HIM-1016/smart-expense
 ```
 
-### 3. Install dependencies
+## 3. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 4. Create environment variables
+## 4. Configure Environment Variables
 
-Create a `.env.local` file and add the required values.
-
-Example:
-
-```env
-MONGODB_URI=your_mongodb_connection_string
-DATABASE_URL=your_database_url
-
-AUTH_SECRET=your_secret_key
-AUTH_URL=http://localhost:3000
-
-NEXTAUTH_SECRET=your_secret_key
-NEXTAUTH_URL=http://localhost:3000
-
-GEMINI_API_KEY=your_gemini_api_key
-GROQ_API_KEY=your_groq_api_key
-
-EMAIL_USER=your_email
-EMAIL_PASSWORD=your_app_password
-```
-
-The repository's `.env.example` currently defines MongoDB, email, NextAuth, Gemini and Groq configuration variables.
-
----
-
-### 5. Start the development server
-
-```bash
-npm run dev
-```
-
-Open:
+Create:
 
 ```text
-http://localhost:3000
+.env.local
+```
+
+Example configuration:
+
+```env
+# Database
+DATABASE_URL=your_mongodb_connection_string
+MONGODB_URI=your_mongodb_connection_string
+
+# Authentication
+AUTH_SECRET=your_secret
+AUTH_URL=http://localhost:3000
+
+NEXTAUTH_SECRET=your_secret
+NEXTAUTH_URL=http://localhost:3000
+
+# Email / OTP
+BREVO_API_KEY=your_brevo_api_key
+BREVO_FROM=Wealth Sight <your_verified_email@example.com>
+
+# AI
+GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
 ```
 
 ---
 
-## 🔑 AI API Keys
+# 🔑 AI API Keys
 
-Wealth Sight supports two AI providers.
+## Google Gemini
 
-### Google Gemini
-
-Get a Gemini API key from:
+Get an API key from:
 
 ```text
 https://aistudio.google.com/apikey
 ```
 
-### Groq
+## Groq
 
-Get a Groq API key from:
+Get an API key from:
 
 ```text
 https://console.groq.com/keys
 ```
 
-Gemini is intended to be the preferred provider while Groq can act as a fallback.
+Gemini is used as the preferred AI provider while Groq can act as the fallback.
 
 ---
 
-## 🗄️ Database
+# 📧 Brevo Email Setup
 
-The current application uses **MongoDB** with **Mongoose**.
+The current project uses the Brevo API for OTP email verification.
+
+Create a Brevo API key and configure:
+
+```env
+BREVO_API_KEY=your_api_key
+BREVO_FROM=Wealth Sight <your_verified_sender_email>
+```
+
+Unlike SMTP-based delivery, this sends emails through an HTTPS API request.
+
+---
+
+# 🗄️ Database
+
+Wealth Sight uses:
+
+**MongoDB + Mongoose**
 
 Example:
 
 ```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/smart-expense
+DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/smart-expense
 ```
 
-You can use MongoDB Atlas for a cloud database.
+MongoDB Atlas can be used for the hosted database.
 
 ---
 
-## 📈 Application Flow
+# 📈 Application Flow
 
 ```text
-User
- │
- ▼
-Login / Signup
- │
- ▼
-Dashboard
- │
- ├── Transactions
- │      ├── Manual Entry
- │      ├── CSV / Excel Import
- │      └── Categorization
- │
- ├── Budgets
- │
- ├── Savings Goals
- │
- ├── Financial Insights
- │
- └── AI Chat
+                 User
+                   │
+                   ▼
+             Login / Signup
+                   │
+                   ▼
+               Dashboard
+                   │
+       ┌───────────┼────────────┐
+       │           │            │
+       ▼           ▼            ▼
+ Transactions    Budgets     Savings Goals
+       │
+       ├── Manual Entry
+       ├── CSV Import
+       ├── Excel Import
+       ├── Statement Import
+       └── AI Categorization
+                   │
+                   ▼
+             Financial Analysis
+                   │
+        ┌──────────┼───────────┐
+        │          │           │
+        ▼          ▼           ▼
+    Insights   Benchmarks   Upcoming Bills
         │
         ▼
-   Gemini / Groq
-        │
-        ▼
-   Personalized Response
+              AI Assistant
+                   │
+             ┌─────┴─────┐
+             ▼           ▼
+          Gemini       Groq
+             │           │
+             └─────┬─────┘
+                   ▼
+          Personalized Response
 ```
 
 ---
 
-## 🎯 Problem We Are Solving
+# 🎯 Problem We Are Solving
 
-Managing personal finances can become difficult when users have many transactions spread across different bank accounts or statements.
+Managing personal finances becomes difficult when users have many transactions and financial statements.
 
-Most people can see their transactions, but they don't always understand:
+Users often know **how much money they have**, but not necessarily:
 
 * Where their money is going
-* Which categories consume the most money
+* Which categories consume the most
 * Whether they are overspending
+* How their spending compares with benchmarks
 * How much they should save
-* What financial habits they should change
+* Which financial habits they should change
 
-Wealth Sight tries to solve this by combining **transaction management + analytics + AI** in one place.
-
----
-
-## 💡 Why Wealth Sight?
-
-Instead of being only an expense tracker, Wealth Sight focuses on the bigger picture.
+Wealth Sight combines:
 
 ```text
-Raw Financial Data
-        ↓
-Organized Transactions
-        ↓
-Spending Analysis
-        ↓
+Financial Data
+      ↓
+Transaction Management
+      ↓
+Categorization
+      ↓
+Analytics
+      ↓
+Benchmark Comparison
+      ↓
 Financial Health
-        ↓
+      ↓
 AI Insights
-        ↓
-Better Financial Decisions
+      ↓
+Better Decisions
 ```
-
-The objective is to turn financial data into something a normal user can actually understand and use.
 
 ---
 
-## 🏆 Hackathon
+# 💡 Why Wealth Sight?
+
+Wealth Sight is more than a simple expense tracker.
+
+It combines:
+
+**Transaction Management + Analytics + AI + Financial Planning**
+
+into a single application.
+
+The aim is to make financial information understandable for normal users rather than presenting only raw numbers.
+
+---
+
+# 🏆 Hackathon
 
 Built for:
 
@@ -449,41 +679,54 @@ Project:
 
 ---
 
-## 🚧 Future Improvements
+# 🚀 Live Demo
 
-Some improvements that can be added later:
+**Deployed Website:**
+
+https://hackinmotion-ricr-him-1016.onrender.com/
+
+---
+
+# 📂 Repository
+
+**GitHub Repository:**
+
+https://github.com/mayankatulkar26/HackInMotion-RICR-HIM-1016
+
+**Project Folder:**
+
+```text
+smart-expense
+```
+
+---
+
+# 🔮 Future Improvements
+
+Possible future additions include:
 
 * Bank API integration
 * Automatic recurring-payment detection
-* Better financial forecasting
+* Advanced financial forecasting
 * Emergency fund planning
 * Investment tracking
 * Multi-account support
 * Bill reminders
-* Financial benchmarking
-* Smarter AI recommendations
+* More personalized benchmarking
+* Advanced AI recommendations
 * Mobile application
+* Automated financial alerts
 
 ---
 
-## 👨‍💻 Team / Project
+# 👨‍💻 Project
 
-Built as a hackathon project with the goal of making personal finance easier, smarter and more understandable.
+Wealth Sight was developed as a hackathon project with the goal of making personal finance:
 
-🚀 **Deployed Website:**  
-https://hackinmotion-ricr-him-1016.onrender.com/
-
-Try Wealth Sight live without running the project locally.
-
-
-**Repository:**
-https://github.com/mayankatulkar26/HackInMotion-RICR-HIM-1016
-
-**Project Folder:**
-`smart-expense`
+**Simpler. Smarter. More Understandable.**
 
 ---
 
-## 📄 License
+# 📄 License
 
 This project is created for educational and hackathon purposes.
