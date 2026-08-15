@@ -1,268 +1,356 @@
-# OTP-Based Authentication Setup Guide
+## 🔐 OTP-Based Authentication Setup Guide
 
-This guide explains how to set up and use the new OTP (One-Time Password) based email authentication system for Smart Expense.
+Wealth Sight uses **OTP-based email verification** during signup and also uses OTPs for password reset.
 
-## Overview
+The current implementation uses the **Brevo HTTP API** for sending OTP emails.
 
-The OTP authentication flow works as follows:
-1. **Signup**: User enters name, email, and password
-2. **OTP Generation**: System generates a 6-digit OTP and sends it to the user's email
-3. **Verification**: User enters the OTP received in their email
-4. **Access**: Upon successful verification, user is automatically logged in and redirected to the dashboard
+### 🔄 Authentication Flow
 
-## Setup Instructions
-
-### 1. Install Dependencies
-
-First, install the required packages:
-
-```bash
-npm install
+```text
+User enters Name + Email + Password
+              ↓
+       Server validates data
+              ↓
+       Generate 6-digit OTP
+              ↓
+       OTP expires in 10 minutes
+              ↓
+      Send OTP using Brevo API
+              ↓
+       User enters OTP
+              ↓
+       Verify OTP + Expiry
+              ↓
+       Mark email as verified
+              ↓
+        User is signed in
 ```
 
-The `nodemailer` package has been added to handle email sending.
+---
+
+### 1. Create a Brevo Account
+
+Create a Brevo account and generate an API key.
+
+You need the API key to allow Wealth Sight to send verification emails.
+
+---
 
 ### 2. Configure Environment Variables
 
-Create a `.env.local` file in the root directory (copy from `.env.example`):
+Create a `.env.local` file inside:
 
-```bash
-cp .env.example .env.local
+```text
+smart-expense/.env.local
 ```
 
-#### For Gmail SMTP (Recommended for Testing):
+Add:
 
-1. Enable "Less secure app access" or use an [App Password](https://support.google.com/accounts/answer/185833):
-   - Go to Google Account Security Settings
-   - Enable 2-Step Verification
-   - Generate an App Password for Mail
-   - Copy the 16-character password
-
-2. Update `.env.local`:
 ```env
-EMAIL_USER=your-gmail@gmail.com
-EMAIL_PASSWORD=xxxx-xxxx-xxxx-xxxx
-```
+# Database
+DATABASE_URL=your_mongodb_connection_string
+MONGODB_URI=your_mongodb_connection_string
 
-#### For Custom SMTP Server:
+# Authentication
+AUTH_SECRET=your_secret_key
+AUTH_URL=http://localhost:3000
 
-Update `.env.local`:
-```env
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@example.com
-SMTP_PASSWORD=your-password
-```
-
-### 3. Configure Other Required Variables
-
-Make sure you also have:
-```env
-MONGODB_URI=your-mongodb-uri
-NEXTAUTH_SECRET=your-secret-key
+NEXTAUTH_SECRET=your_secret_key
 NEXTAUTH_URL=http://localhost:3000
+
+# Brevo OTP Email
+BREVO_API_KEY=your_brevo_api_key
+BREVO_FROM=Wealth Sight <your_verified_sender_email>
+
+# AI Providers
+GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
 ```
 
-## Database Changes
+### Important
 
-The User model has been updated with the following new fields:
+Do **not** commit `.env.local` or your API keys to GitHub.
 
-- `isEmailVerified` (Boolean): Tracks if the user's email has been verified
-- `otp` (String): Stores the current OTP
-- `otpExpiry` (Date): Stores the OTP expiration time (10 minutes from generation)
+---
 
-No migration needed - MongoDB will create these fields automatically.
+### 3. Configure the Brevo Sender
 
-## File Changes
+The value of `BREVO_FROM` should contain the sender name and email address:
 
-### New Files Created:
-
-1. **`src/lib/email.ts`**
-   - `sendOTPEmail()`: Sends OTP to user's email
-   - `generateOTP()`: Generates a random 6-digit OTP
-   - `getOTPExpiry()`: Calculates OTP expiry time (10 minutes)
-
-2. **`src/components/auth/otp-signup-form.tsx`**
-   - New signup form component with OTP verification step
-   - Two-step UI: Registration → OTP Verification
-   - Improved UX with visual feedback and error handling
-
-### Modified Files:
-
-1. **`src/db/models.ts`**
-   - Added `isEmailVerified`, `otp`, and `otpExpiry` fields to User schema
-
-2. **`src/actions/auth.ts`**
-   - Added `signupWithOTPAction()`: Creates user and sends OTP
-   - Added `verifyOTPAction()`: Verifies OTP and marks email as verified
-
-3. **`src/lib/auth.ts`**
-   - Updated credentials provider to support OTP verification
-   - Added `isOTPVerify` flag for OTP-based signin
-
-4. **`src/app/(auth)/signup/page.tsx`**
-   - Updated to use new `OTPSignupForm` component
-
-5. **`package.json`**
-   - Added `nodemailer` and `@types/nodemailer` dependencies
-
-## How It Works
-
-### Signup Flow:
-
-```typescript
-// User submits signup form
-1. signupWithOTPAction(formData)
-   ├─ Validate input (name, email, password)
-   ├─ Check if email already exists
-   ├─ Hash password with bcrypt
-   ├─ Generate 6-digit OTP
-   ├─ Send OTP email
-   ├─ Store user with OTP (not verified yet)
-   └─ Return success message
-
-// User enters OTP
-2. verifyOTPAction(formData)
-   ├─ Validate OTP format (6 digits)
-   ├─ Check if OTP hasn't expired
-   ├─ Compare provided OTP with stored OTP
-   ├─ Mark email as verified
-   ├─ Clear OTP and expiry
-   ├─ Sign in user automatically
-   └─ Redirect to dashboard
+```env
+BREVO_FROM=Wealth Sight <your_verified_sender_email>
 ```
 
-### Email Template:
+Example:
 
-The OTP email includes:
-- Personalized greeting with user's name
-- Large, easy-to-read OTP display
-- Expiration time (10 minutes)
-- Security notice about not sharing the code
-- Professional footer
+```env
+BREVO_FROM=Wealth Sight <no-reply@getwealthsight.com>
+```
 
-## OTP Validity:
+Use an email address that is accepted/verified by your Brevo account.
 
-- **Generation**: 6-digit random number
-- **Validity Period**: 10 minutes from generation
-- **Auto-Expiry**: After 10 minutes, user must request a new OTP
-- **Max Attempts**: No hard limit (user can retry), but OTP expires after 10 minutes
+---
 
-## Security Considerations:
+### 4. How OTP Generation Works
 
-✅ **Implemented:**
-- OTP stored in database (not in emails)
-- Automatic expiry after 10 minutes
-- Password hashed with bcrypt
-- HTTPS only in production
-- NextAuth JWT session tokens
+Wealth Sight generates a random 6-digit OTP:
 
-⚠️ **Recommended Additional Steps:**
-- Rate limiting on OTP requests (prevent brute force)
-- Rate limiting on OTP verification attempts
-- Add reCAPTCHA to signup form
-- Monitor for suspicious patterns
-- Consider TOTP (Time-based OTP) for enhanced security
+```text
+Example:
 
-## Troubleshooting
+482731
+```
 
-### Email Not Sending:
+The OTP is generated by:
 
-1. **Gmail Issues**:
-   - Verify credentials in `.env.local`
-   - Check if 2FA is enabled
-   - Use App Password instead of regular password
-   - Allow less secure app access
+```ts
+generateOTP()
+```
 
-2. **SMTP Issues**:
-   - Test connection with correct host, port, and credentials
-   - Check firewall/network settings
-   - Enable TLS/SSL if required
+and its expiry time is generated using:
 
-3. **General**:
-   - Check application logs for error messages
-   - Verify EMAIL_USER environment variable is set
-   - Test with a different email provider
+```ts
+getOTPExpiry()
+```
 
-### OTP Not Validating:
+The OTP remains valid for:
 
-1. Check expiry time (10 minutes)
-2. Verify exact OTP match (case-sensitive, no spaces)
-3. Check database connection
-4. Verify user exists in database
+```text
+10 minutes
+```
 
-### User Not Logging In After OTP Verification:
+---
 
-1. Check if `isEmailVerified` is set to true in database
-2. Verify NextAuth configuration
-3. Check session/JWT configuration in `auth.config.ts`
+### 5. OTP Email Delivery
 
-## Testing the Feature
+The application sends the OTP through Brevo's API:
 
-### Manual Testing Steps:
+```text
+Wealth Sight
+     ↓
+Brevo HTTP API
+     ↓
+User's Email
+     ↓
+6-Digit OTP
+```
+
+The application uses:
+
+```text
+https://api.brevo.com/v3/smtp/email
+```
+
+with the Brevo API key.
+
+No SMTP server configuration is required in the current implementation.
+
+---
+
+### 6. Signup Verification
+
+When a new user signs up:
+
+1. Name, email and password are validated.
+2. The email is converted to lowercase.
+3. The system checks whether the account already exists.
+4. A 6-digit OTP is generated.
+5. The OTP expiry is set to 10 minutes.
+6. The OTP is sent through Brevo.
+7. The OTP and expiry are stored with the user.
+8. The account remains unverified.
+9. The user enters the OTP.
+10. The system validates the OTP.
+11. The email is marked as verified.
+12. The OTP is cleared.
+13. The user is signed in.
+
+---
+
+### 7. OTP Verification
+
+The verification requires:
+
+```text
+Email + 6-digit OTP
+```
+
+The system checks:
+
+```text
+Is the user present?
+        ↓
+Is the OTP still valid?
+        ↓
+Does the OTP match?
+        ↓
+Mark email as verified
+        ↓
+Clear OTP data
+```
+
+If the OTP is incorrect:
+
+```text
+Invalid OTP. Please try again.
+```
+
+If the OTP has expired:
+
+```text
+OTP has expired. Please sign up again.
+```
+
+---
+
+### 8. Forgot Password OTP
+
+The same OTP system is also used for password recovery.
+
+```text
+User enters email
+       ↓
+System finds account
+       ↓
+Generate OTP
+       ↓
+Send OTP through Brevo
+       ↓
+User enters OTP
+       ↓
+Verify OTP
+       ↓
+Enter new password
+       ↓
+Hash new password
+       ↓
+Update account
+       ↓
+Clear OTP
+```
+
+The new password is securely hashed using:
+
+```text
+bcryptjs
+```
+
+---
+
+### 9. Required Environment Variables
+
+For OTP functionality, the important variables are:
+
+```env
+BREVO_API_KEY=your_brevo_api_key
+BREVO_FROM=Wealth Sight <your_verified_sender_email>
+```
+
+The application will return an error if the Brevo API key is missing.
+
+Example:
+
+```text
+Failed to send OTP: Brevo API key not configured
+```
+
+---
+
+### 10. Current OTP Configuration
+
+| Feature            | Current Setup |
+| ------------------ | ------------- |
+| OTP Length         | 6 digits      |
+| OTP Expiry         | 10 minutes    |
+| Email Provider     | Brevo         |
+| Email Method       | HTTP API      |
+| SMTP Required      | ❌ No          |
+| OTP Signup         | ✅ Yes         |
+| Password Reset OTP | ✅ Yes         |
+| Password Hashing   | bcryptjs      |
+| Database           | MongoDB       |
+| Authentication     | NextAuth      |
+
+---
+
+### ⚠️ Important: Old SMTP Setup
+
+The current repository **does not use the previous Nodemailer/SMTP OTP setup**.
+
+Do not add these old variables for the current OTP implementation:
+
+```env
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+SMTP_SECURE=
+```
+
+The current email implementation uses:
+
+```env
+BREVO_API_KEY=
+BREVO_FROM=
+```
+
+---
+
+### 🧪 Testing OTP Authentication
+
+After configuring the environment variables:
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Start development server
 npm run dev
-
-# 3. Navigate to /signup
-# 4. Fill in the signup form
-# 5. Check your email for OTP
-# 6. Enter OTP and verify
-# 7. Should redirect to dashboard automatically
 ```
 
-### Test Credentials:
+Open:
 
-For Gmail testing, create a dedicated test email account or use your existing one with an App Password.
-
-## Email Provider Options
-
-### Option 1: Gmail (Easiest for Testing)
-```env
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-password
+```text
+http://localhost:3000
 ```
 
-### Option 2: SendGrid
-```env
-# Update email.ts to use SendGrid API
-SENDGRID_API_KEY=your-api-key
+Then:
+
+```text
+Signup
+  ↓
+Enter Name + Email + Password
+  ↓
+Receive OTP
+  ↓
+Enter 6-digit OTP
+  ↓
+Email Verified
+  ↓
+Dashboard
 ```
 
-### Option 3: AWS SES
-```env
-# Update email.ts to use AWS SES
-AWS_SES_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your-key
-AWS_SECRET_ACCESS_KEY=your-secret
+For password recovery:
+
+```text
+Forgot Password
+  ↓
+Enter Email
+  ↓
+Receive OTP
+  ↓
+Verify OTP
+  ↓
+Set New Password
+  ↓
+Login
 ```
 
-### Option 4: Custom SMTP
-```env
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=your-email@example.com
-SMTP_PASSWORD=your-password
-```
+---
 
-## Future Enhancements
+### 🔒 Security Notes
 
-- [ ] Resend OTP functionality
-- [ ] Rate limiting on OTP requests
-- [ ] SMS-based OTP option
-- [ ] Multi-factor authentication (TOTP)
-- [ ] OTP recovery codes
-- [ ] Device fingerprinting
-- [ ] Login attempt history
-
-## Support
-
-For issues or questions, please refer to:
-- [NextAuth Documentation](https://next-auth.js.org/)
-- [Nodemailer Documentation](https://nodemailer.com/)
-- [MongoDB Documentation](https://docs.mongodb.com/)
+* Never expose `BREVO_API_KEY` in frontend code.
+* Never commit `.env.local`.
+* OTPs should only be sent from server-side code.
+* OTP validity is limited to 10 minutes.
+* Passwords are hashed before being stored.
+* OTP data is cleared after successful verification.
+* Email addresses are normalized to lowercase before database operations.
