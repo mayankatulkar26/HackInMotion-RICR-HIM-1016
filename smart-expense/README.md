@@ -424,16 +424,17 @@ smart-expense/
 
 # ⚙️ Getting Started
 
+Follow the steps below to run Wealth Sight locally.
+
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/mayankatulkar26/HackInMotion-RICR-HIM-1016.git
+git clone https://github.com/mayankatulkar26/Wealth-Sight.git
 ```
-
-## 2. Enter the Project
+ 2. Enter the Project
 
 ```bash
-cd HackInMotion-RICR-HIM-1016/smart-expense
+cd Wealth-Sight/smart-expense
 ```
 
 ## 3. Install Dependencies
