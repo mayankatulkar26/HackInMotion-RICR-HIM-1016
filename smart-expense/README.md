@@ -1,120 +1,138 @@
-# Wealth Sight 💰
+# 💰 Wealth Sight
 
-### AI-Powered Personal Finance & Financial Health Dashboard
+## Educational Personal Finance & Financial Health Dashboard
 
-Wealth Sight is an AI-powered personal finance web application built for the **Hack In Motion – RICR FinTech Challenge**.
+Wealth Sight is a full-stack personal finance web application designed for **educational and learning purposes**.
 
-The goal is simple: instead of manually checking transactions and trying to understand where money goes, Wealth Sight turns financial data into clear insights, spending analysis, budgets, savings goals and personalized recommendations.
+The application helps users understand their financial activity by combining:
 
----
+- Personal finance management
+- Expense tracking
+- Income management
+- Budget planning
+- Savings goals
+- Financial analytics
+- Benchmark comparison
+- AI-assisted transaction categorization
+- AI-powered financial insights
+- AI finance assistance
+- Upcoming bill tracking
+- Financial health visualization
 
-## 🚀 What Wealth Sight Does
+The project demonstrates how modern full-stack technologies, databases, authentication, data processing, analytics, and AI services can be combined to build a practical financial application.
 
-Wealth Sight helps users:
-
-* 📊 Understand their overall financial health
-* 💳 Track income and expenses
-* 📁 Import transactions from CSV, Excel and financial statements
-* 🏷️ Automatically categorize transactions
-* 💰 Manage budgets
-* 🎯 Create savings goals
-* 📈 Analyze spending patterns
-* 🤖 Generate AI-powered financial insights
-* 💬 Chat with an AI finance assistant
-* 🧾 Track upcoming bills
-* 📊 Compare financial behavior with benchmark data
-* 🔐 Secure accounts with authentication and OTP verification
+> **Disclaimer:** Wealth Sight is an educational and demonstration application. Financial calculations, AI-generated insights, benchmark comparisons, and recommendations should not be considered professional financial advice.
 
 ---
 
-# ✨ Main Features
+# 🌐 Live Application
 
-## 🔐 Authentication & OTP Verification
+## 🚀 Production Website
 
-Users can securely create accounts and access their dashboard.
+**Live Demo:**
 
-Features include:
-
-* Login and signup
-* Password hashing
-* NextAuth authentication
-* Protected dashboard routes
-* OTP-based signup verification
-* OTP-based password recovery
-* Server-side validation
-
-### 📧 Email Verification
-
-The email system was recently updated for better deployment compatibility.
-
-The latest implementation uses the **Brevo HTTP API** instead of SMTP/Nodemailer for OTP delivery.
-
-This avoids common SMTP connection problems on cloud/serverless deployments.
-
-Current configuration uses:
-
-```env
-BREVO_API_KEY=your_brevo_api_key
-BREVO_FROM=Wealth Sight <your-verified-email@example.com>
-```
+https://wealth-sight-production.up.railway.app/
 
 ---
 
-# 📊 Financial Dashboard
+# 📌 About Wealth Sight
 
-The dashboard provides a complete overview of the user's financial activity.
+Managing personal finances can become difficult when financial information is spread across transactions, bills, budgets, savings goals, and financial statements.
+
+Wealth Sight provides a centralized platform where users can:
+
+- Track income and expenses
+- Analyze spending patterns
+- Create budgets
+- Set savings goals
+- Import financial data
+- Categorize transactions
+- Monitor upcoming bills
+- Compare spending with benchmark data
+- Analyze financial health
+- Generate AI-assisted financial insights
+- Interact with an AI finance assistant
+
+The primary objective is to make financial information **easier to understand, analyze, and learn from**.
+
+---
+
+# ✨ Features
+
+## 📊 Financial Dashboard
+
+The dashboard provides an overview of the user's financial activity.
 
 It includes:
 
-* Total income
-* Total expenses
-* Current balance
-* Spending summary
-* Recent transactions
-* Financial health information
-* Month-based filtering
-* Spending visualizations
-* Upcoming bills
-* Quick financial indicators
+- Total income
+- Total expenses
+- Current balance
+- Financial health indicators
+- Recent transactions
+- Spending summaries
+- Monthly analysis
+- Interactive charts
+- Upcoming bills
+- Budget information
+- Savings progress
 
-The dashboard dynamically updates according to the selected period.
+The dashboard dynamically presents financial information based on the user's available transaction data.
 
 ---
 
 # 💳 Transaction Management
 
-Users can manage financial transactions from a dedicated transactions section.
+Users can manage their financial transactions from a dedicated interface.
 
-Supported functionality includes:
+### Supported Operations
 
-* Add transactions manually
-* Edit transaction information
-* View transactions
-* Search transactions
-* Filter transactions
-* Categorize transactions
-* Track income
-* Track expenses
-* View transaction statistics
+- Add transactions
+- Edit transactions
+- Delete transactions
+- Search transactions
+- Filter transactions
+- Categorize transactions
+- Track income
+- Track expenses
+- View transaction statistics
 
-The transaction interface has also been improved for better usability and responsive layouts.
-
----
-
-# 📂 Statement & File Import
-
-Users can import existing financial data instead of entering every transaction manually.
-
-Supported formats include:
-
-* CSV
-* Excel / XLSX
-* Financial statement data
-* PDF statement processing
-
-The transaction import system processes the uploaded data and converts it into structured transactions.
+Transactions are used throughout the application for financial analysis and insight generation.
 
 ---
+
+# 📂 Financial Data Import
+
+Wealth Sight allows users to import existing financial information instead of manually entering every transaction.
+
+### Supported Formats
+
+- CSV
+- Excel / XLSX
+- PDF financial statements
+
+The application processes imported information and converts it into structured transaction data.
+
+### Data Processing Flow
+
+```text
+Financial Statement
+        │
+        ▼
+   File Upload
+        │
+        ▼
+ Data Extraction
+        │
+        ▼
+Transaction Processing
+        │
+        ▼
+   Categorization
+        │
+        ▼
+Financial Analysis
+
 
 # 🤖 AI Transaction Categorization
 
@@ -321,66 +339,6 @@ The application is currently designed to work in a deployed environment rather t
 
 ---
 
-# 🧠 Recent Development Updates
-
-The latest development history includes the following major changes:
-
-### Email Verification
-
-* Replaced SMTP/Nodemailer OTP delivery with Brevo HTTP API
-* Added Brevo sender configuration
-* Improved OTP error handling
-
-### Financial Analysis
-
-* Added a dedicated financial analysis action
-* Added additional financial calculations and insights
-
-### Benchmark Comparison
-
-* Added benchmark financial data
-* Added benchmark comparison logic
-* Added visual benchmark comparison UI
-
-### Upcoming Bills
-
-* Added upcoming bills dashboard component
-
-### AI Chat
-
-* Added AI chat history
-* Improved AI provider routing
-* Added retry/provider fallback improvements
-
-### Dashboard & Insights
-
-* Improved dashboard calculations
-* Updated financial insights UI
-* Improved savings simulator
-* Added benchmark visualization
-
-### Transactions
-
-* Improved CSV uploader
-* Improved statement view
-* Improved transaction form
-* Improved transaction table
-* Added transaction tab utility
-
-### UI
-
-* Updated top navigation
-* Improved mobile layouts
-* Improved transition page
-* Updated responsive behavior
-
-### Deployment & Production
-
-* Fixed deployed signup issues
-* Added Railway deployment fixes
-* Improved production environment configuration
-
----
 
 # 🛠️ Tech Stack
 
@@ -663,27 +621,11 @@ The aim is to make financial information understandable for normal users rather 
 
 ---
 
-# 🏆 Hackathon
-
-Built for:
-
-**Hack In Motion – RICR**
-
-Theme:
-
-**FinTech**
-
-Project:
-
-**Wealth Sight**
-
----
-
 # 🚀 Live Demo
 
 **Deployed Website:**
 
-https://hackinmotion-ricr-him-1016.onrender.com/
+https://wealth-sight-production.up.railway.app/
 
 ---
 
@@ -691,7 +633,7 @@ https://hackinmotion-ricr-him-1016.onrender.com/
 
 **GitHub Repository:**
 
-https://github.com/mayankatulkar26/HackInMotion-RICR-HIM-1016
+https://github.com/mayankatulkar26/Wealth-Sight/tree/main
 
 **Project Folder:**
 
@@ -719,14 +661,8 @@ Possible future additions include:
 
 ---
 
-# 👨‍💻 Project
 
-Wealth Sight was developed as a hackathon project with the goal of making personal finance:
-
-**Simpler. Smarter. More Understandable.**
-
----
 
 # 📄 License
 
-This project is created for educational and hackathon purposes.
+This project is provided for educational and demonstration purposes.
