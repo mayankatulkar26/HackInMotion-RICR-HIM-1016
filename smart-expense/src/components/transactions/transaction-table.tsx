@@ -37,6 +37,7 @@ function persistMonthFilter(value: string) {
 export function TransactionTable({ rows }: { rows: Transaction[] }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('All');
+  const [typeFilter, setTypeFilter] = useState<'All' | 'debit' | 'credit'>('All');
   const [month, setMonth] = useState<string>('All');
   const [year, setYear] = useState('All');
   const [pending, startTransition] = useTransition();
@@ -73,6 +74,7 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
     const query = q.toLowerCase().trim();
     return rows.filter((r) => {
       if (cat !== 'All' && r.category !== cat) return false;
+      if (typeFilter !== 'All' && r.type !== typeFilter) return false;
       if (query && !r.description.toLowerCase().includes(query)) return false;
 
       const d = new Date(r.date);
@@ -84,7 +86,7 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
 
       return true;
     });
-  }, [rows, q, cat, month, year]);
+  }, [rows, q, cat, typeFilter, month, year]);
 
   function onDelete(id: string) {
     startTransition(async () => {
@@ -130,6 +132,16 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
             ))}
           </SelectContent>
         </Select>
+        <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as 'All' | 'debit' | 'credit')}>
+          <SelectTrigger className="w-full sm:w-[120px] md:w-[150px] text-xs sm:text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All types</SelectItem>
+            <SelectItem value="debit">Debit</SelectItem>
+            <SelectItem value="credit">Credit</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={year} onValueChange={setYear}>
           <SelectTrigger className="w-full sm:w-[110px] md:w-[150px] text-xs sm:text-sm">
             <SelectValue />
@@ -172,6 +184,9 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
                 <th className="text-left px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Category
                 </th>
+                <th className="text-left px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                  Type
+                </th>
                 <th className="text-right px-2 sm:px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">
                   Amount
                 </th>
@@ -201,6 +216,18 @@ export function TransactionTable({ rows }: { rows: Transaction[] }) {
                           style={{ background: color }}
                         />
                         <span className="hidden sm:inline">{r.category}</span>
+                      </span>
+                    </td>
+                    <td className="px-2 sm:px-3 py-2 text-xs sm:text-sm whitespace-nowrap">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] sm:text-xs font-medium',
+                          isCredit
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600'
+                            : 'border-red-500/30 bg-red-500/10 text-red-600',
+                        )}
+                      >
+                        {isCredit ? 'Credit' : 'Debit'}
                       </span>
                     </td>
                     <td

@@ -97,14 +97,14 @@ export function TransactionForm() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
         <div className="space-y-1.5 sm:space-y-2">
-          <Label className="text-xs sm:text-sm">Type</Label>
+          <Label className="text-xs sm:text-sm">Payment type</Label>
           <Select value={type} onValueChange={(v) => setType(v as any)}>
             <SelectTrigger className="text-xs sm:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="debit">Expense</SelectItem>
-              <SelectItem value="credit">Income</SelectItem>
+              <SelectItem value="debit">Debit</SelectItem>
+              <SelectItem value="credit">Credit</SelectItem>
             </SelectContent>
           </Select>
         </div>
