@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  BarChart3,
   MessageCircle,
   Moon,
   Receipt,
@@ -28,6 +29,7 @@ const NAV = [
   { href: '/transactions', label: 'Transactions', icon: Receipt },
   { href: '/budgets', label: 'Budgets & Goals', icon: Target },
   { href: '/insights', label: 'Insights', icon: Sparkles },
+  { href: '/comparison', label: 'Comparison', icon: BarChart3 },
   { href: '/chat', label: 'AI Chat', icon: MessageCircle },
 ];
 
